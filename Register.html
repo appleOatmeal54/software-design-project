@@ -8,11 +8,12 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>QueueSmart - Login</title>
+    <title>QueueSmart - Register</title>
 
     <link rel="stylesheet" href="style.css">
 
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+          rel="stylesheet">
 </head>
 
 <body>
@@ -21,37 +22,34 @@
 
         <form action="">
 
-            <h1>Login</h1>
+            <h1>Register</h1>
 
             <div class="input-box">
                 <input type="email" id="email" name="email"
                        placeholder="Email" required>
-                <i class='bx bxs-user' ></i>
+                <i class="bx bxs-user"></i>
             </div>
 
             <div class="input-box">
                 <input type="password" id="password" name="password"
                        placeholder="Password" required>
-                <i class='bx bxs-lock' ></i>
+                <i class="bx bxs-lock"></i>
             </div>
 
-            <div class="remember-forgot">
-
-                <label>
-                    <input type="checkbox"> Remember me
-                </label>
-
-                <a href="#">Forgot password?</a>
-
+            <div class="input-box">
+                <input type="password" id="confirm-password"
+                       name="confirm-password"
+                       placeholder="Confirm Password" required>
+                <i class="bx bxs-lock"></i>
             </div>
 
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn">Register</button>
 
             <div class="register-link">
 
                 <p>
-                    Don't have an account?
-                    <a href="Register.html">Register</a>
+                    Already have an account?
+                    <a href="Login.html">Login</a>
                 </p>
 
             </div>
