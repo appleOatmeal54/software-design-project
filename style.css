@@ -6,13 +6,48 @@
 }
 
 body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
     min-height: 100vh;
     background: url('images/background.jpg') no-repeat;
     background-position: center;
 }
+
+
+/* MAIN PAGE LAYOUT */
+
+.main-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 300px;
+    padding-top: 240px;
+}
+
+
+/* LEFT SIDE */
+
+.welcome {
+    width: 500px;
+}
+
+.title h1 {
+    color: white;
+    font-size: 75px;
+    margin: 0;
+}
+
+.title h1 span {
+    color: lightblue;
+}
+
+.welcome h2 {
+    color: white;
+    font-size: 20px;
+    margin-top: 20px;
+}
+
+
+/* LOGIN / REGISTER  */
 
 .wrapper {
     width: 420px;
@@ -76,7 +111,7 @@ body {
 
 .remember-forgot a {
     color: #fff;
-    text-decoration: none;   
+    text-decoration: none;
 }
 
 .remember-forgot a:hover {
@@ -111,4 +146,9 @@ body {
 
 .register-link p a:hover {
     text-decoration: underline;
+}
+
+
+#register-form {
+    display: none;
 }
