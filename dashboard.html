@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueSmart - User Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <div class="dashboard-container">
+
+        <!-- DASHBOARD VIEW -->
+        <div class="dashboard-wrapper" id="dashboard-view">
+            <h1>Queue<span>Smart</span> User Dashboard</h1>
+            
+            <div class="dashboard-grid">
+                
+                <!-- Queue Status Card -->
+                <div class="glass-card status-card">
+                    <h3>Queue Status</h3>
+                    <div class="status-info">
+                        <p>Position in queue: <strong>3</strong></p>
+                        <p>ETA time: <strong>15 mins</strong></p>
+                    </div>
+                    <div class="notify-options">
+                        <label><input type="checkbox"> Notify by Phone</label>
+                        <label><input type="checkbox"> Notify by Email</label>
+                    </div>
+                    <button class="btn leave-btn" onclick="leaveQueue()">Leave Queue</button>
+                </div>
+
+                <!-- Updates Card -->
+                <div class="glass-card updates-card">
+                    <h3>Updates</h3>
+                    <ul class="notification-list">
+                        <li><i class='bx bx-bell'></i> Moved from position 4 to 3</li>
+                        <li><i class='bx bx-check-circle'></i> Yesterday: Served</li>
+                        <li><i class='bx bx-time-five'></i> Wait time updated</li>
+                    </ul>
+                </div>
+
+                <!-- Services Card -->
+                <div class="glass-card services-link-card">
+                    <h3>Services</h3>
+                    <p>Services Available: <strong>5</strong></p>
+                    <button class="btn view-services-btn" id="show-services">View Services</button>
+                </div>
+
+                <!-- History Card -->
+                <div class="glass-card history-card">
+                    <h3>History</h3>
+                    <table class="history-table">
+                        <tr>
+                            <th>Date</th>
+                            <th>Service Name</th>
+                            <th>Outcome</th>
+                        </tr>
+                        <tr>
+                            <td>09/26/2026</td>
+                            <td>Financial Aid Support</td>
+                            <td>Served</td>
+                        </tr>
+                        <tr>
+                            <td>09/20/2026</td>
+                            <td>Academic Advising</td>
+                            <td>Left Queue</td>
+                        </tr>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SERVICES VIEW (Hidden by default) -->
+        <div class="dashboard-wrapper" id="services-view" style="display: none;">
+            <div class="services-header">
+                <button class="btn small-btn" id="show-dashboard"><i class='bx bx-arrow-back'></i> Go Back</button>
+                <h1>Queue<span>Smart</span> Services</h1>
+            </div>
+            
+            <p class="subtitle">Same day appointments - Select one to join</p>
+
+            <div class="services-grid">
+                <!-- Service 1 -->
+                <div class="glass-card service-item">
+                    <h3>Academic Advising</h3>
+                    <p>Average wait time: 30m</p>
+                    <p>Current People in Q: 4</p>
+                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                </div>
+
+                <!-- Service 2 -->
+                <div class="glass-card service-item">
+                    <h3>Financial Aid Support</h3>
+                    <p>Average wait time: 45m</p>
+                    <p>Current People in Q: 8</p>
+                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                </div>
+
+                <!-- Service 3 -->
+                <div class="glass-card service-item">
+                    <h3>Business & Payment</h3>
+                    <p>Average wait time: 15m</p>
+                    <p>Current People in Q: 2</p>
+                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                </div>
+
+                <!-- Service 4 -->
+                <div class="glass-card service-item">
+                    <h3>Registrar & Records</h3>
+                    <p>Average wait time: 10m</p>
+                    <p>Current People in Q: 1</p>
+                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                </div>
+
+                <!-- Service 5 -->
+                <div class="glass-card service-item">
+                    <h3>Veteran Services</h3>
+                    <p>Average wait time: 20m</p>
+                    <p>Current People in Q: 3</p>
+                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const dashboardView = document.getElementById("dashboard-view");
+        const servicesView = document.getElementById("services-view");
+        
+        const showServicesBtn = document.getElementById("show-services");
+        const showDashboardBtn = document.getElementById("show-dashboard");
+
+        // Toggle to Services View
+        showServicesBtn.addEventListener("click", function(event) {
+            event.preventDefault();
+            dashboardView.style.display = "none";
+            servicesView.style.display = "block";
+        });
+
+        // Toggle back to Dashboard
+        showDashboardBtn.addEventListener("click", function(event) {
+            event.preventDefault();
+            servicesView.style.display = "none";
+            dashboardView.style.display = "block";
+        });
+
+        // Mock function to clear queue status when "Leave Queue" is clicked
+        function leaveQueue() {
+            alert("You have left the queue. Position and ETA cleared.");
+            document.querySelector('.status-info').innerHTML = "<p>Position in queue: <strong>--</strong></p><p>ETA time: <strong>--</strong></p>";
+        }
+
+        // Mock function for joining a queue
+        function joinQueue() {
+            alert("Successfully joined queue! Returning to dashboard.");
+            servicesView.style.display = "none";
+            dashboardView.style.display = "block";
+            document.querySelector('.status-info').innerHTML = "<p>Position in queue: <strong>New</strong></p><p>ETA time: <strong>Calculating...</strong></p>";
+        }
+    </script>
+</body>
+</html>

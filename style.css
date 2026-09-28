@@ -152,3 +152,165 @@ body {
 #register-form {
     display: none;
 }
+/* =========================================
+   DASHBOARD & SERVICES SCREENS (A2)
+========================================= */
+
+.dashboard-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* Centers the dashboard vertically */
+    padding: 50px 20px;
+}
+
+.dashboard-wrapper {
+    width: 900px;
+    background: rgba(0, 0, 0, 0.2); /* Slight dark tint for readability */
+    border: 2px solid rgba(255, 255, 255, .2);
+    backdrop-filter: blur(8px); /* Reduced blur for less opacity */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    color: #fff;
+    border-radius: 10px;
+    padding: 40px;
+}
+
+.dashboard-wrapper h1 {
+    font-size: 36px;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.dashboard-wrapper h1 span {
+    color: #3b82f6; /* Darker blue */
+}
+
+/* Glass Card Components */
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.glass-card h3 {
+    margin-bottom: 15px;
+    color: #3b82f6; /* Darker blue */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 5px;
+}
+
+/* Dashboard Layout Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.history-card {
+    grid-column: span 2; /* History spans the entire bottom row */
+}
+
+/* Specific Card Stylings */
+.status-info p, .services-link-card p {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.notify-options {
+    margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.notification-list {
+    list-style: none;
+}
+
+.notification-list li {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Table styling for History */
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.history-table th, .history-table td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Buttons (Text Only) */
+.dashboard-wrapper .btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    width: auto !important;
+    text-decoration: underline; 
+    color: #fff !important; 
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.dashboard-wrapper .btn:hover {
+    color: #3b82f6 !important; 
+}
+
+.leave-btn {
+    color: #ff4d4d !important; 
+    margin-top: 15px;
+}
+
+.leave-btn:hover {
+    color: #ff1a1a !important; 
+}
+
+.view-services-btn, .join-btn {
+    margin-top: 15px;
+}
+
+.small-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px; 
+}
+
+.services-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+}
+
+.services-header h1 {
+    margin-bottom: 0;
+}
+
+.subtitle {
+    text-align: center;
+    margin: 10px 0 25px 0;
+    font-style: italic;
+    color: #ddd;
+}
+
+/* Services Grid Layout */
+.services-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.service-item p {
+    margin-bottom: 5px;
+}
