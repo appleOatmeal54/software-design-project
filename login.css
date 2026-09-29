@@ -137,3 +137,41 @@
 #register-form {
     display: none;
 }
+
+.welcome h2 {
+  margin-top: 18px;
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.welcome-description {
+  margin-top: 16px;
+  max-width: 460px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.welcome-features {
+  display: grid;
+  gap: 14px;
+  margin-top: 26px;
+  padding: 0;
+  list-style: none;
+}
+
+.welcome-features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 16px;
+}
+
+.welcome-features i {
+  color: lightblue;
+  font-size: 23px;
+  flex-shrink: 0;
+}
