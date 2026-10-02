@@ -1,0 +1,171 @@
+/* ADMIN SCREENS (A3) - builds on style.css + dashboard.css */
+
+.admin-wrapper {
+    width: 960px;
+    max-width: 100%;
+}
+
+.admin-nav {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.admin-nav button {
+    padding: 8px 20px;
+    border-radius: 40px;
+    border: 2px solid rgba(255, 255, 255, .2);
+    background: transparent;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.admin-nav button.active {
+    background: #fff;
+    color: #333;
+    font-weight: 600;
+}
+
+.admin-view { display: none; }
+.admin-view.active { display: block; }
+
+.admin-wrapper h2 {
+    font-size: 22px;
+    margin-bottom: 15px;
+    color: #3b82f6;
+}
+
+/* Buttons (pill style, same as login) */
+
+.action-btn {
+    height: 34px;
+    padding: 0 16px;
+    border-radius: 40px;
+    border: none;
+    background: #fff;
+    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.action-btn:hover { background: #dbeafe; }
+.action-btn.danger { background: #ff4d4d; color: #fff; }
+.action-btn.danger:hover { background: #ff1a1a; }
+.action-btn.ghost {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .4);
+}
+.action-btn.ghost:hover { border-color: #3b82f6; color: #3b82f6; }
+.action-btn.big { height: 45px; padding: 0 28px; font-size: 16px; }
+
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Table helpers */
+
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 40px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.badge.open { background: rgba(74, 222, 128, .2); color: #4ade80; }
+.badge.closed { background: rgba(255, 77, 77, .2); color: #ff6b6b; }
+.badge.low { background: rgba(255, 255, 255, .15); }
+.badge.medium { background: rgba(250, 204, 21, .2); color: #facc15; }
+.badge.high { background: rgba(255, 77, 77, .2); color: #ff6b6b; }
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+/* Form */
+
+.field { margin-bottom: 20px; }
+
+.field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 15px;
+}
+
+.field label .req { color: #ff6b6b; }
+
+.field input,
+.field textarea,
+.field select,
+.toolbar select {
+    width: 100%;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, .2);
+    border-radius: 12px;
+    outline: none;
+    color: #fff;
+    font-size: 16px;
+    padding: 10px 15px;
+}
+
+.toolbar select { width: auto; min-width: 260px; }
+
+.field textarea { resize: vertical; min-height: 90px; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: #3b82f6; }
+.field select option, .toolbar select option { color: #333; }
+
+.field .hint { font-size: 13px; color: #ddd; margin-top: 4px; }
+.field .error { font-size: 13px; color: #ff6b6b; margin-top: 4px; min-height: 16px; }
+
+.form-actions { display: flex; gap: 12px; margin-top: 10px; }
+
+/* Queue list */
+
+.queue-list { list-style: none; }
+
+.queue-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.queue-list .pos { width: 28px; font-weight: 600; color: #3b82f6; }
+.queue-list .name { flex: 1; }
+.queue-list li:first-child .name { font-weight: 600; }
+
+.empty { text-align: center; padding: 25px; font-style: italic; color: #ddd; }
+
+.toast {
+    position: fixed;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #333;
+    padding: 10px 24px;
+    border-radius: 40px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+}
+.toast.show { opacity: 1; }
+
+@media (max-width: 700px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .admin-table { display: block; overflow-x: auto; }
+}

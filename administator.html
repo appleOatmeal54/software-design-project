@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueSmart - Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="admin.css">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="dashboard-container">
+    <div class="dashboard-wrapper admin-wrapper">
+        <h1>Queue<span>Smart</span> Admin</h1>
+
+        <div class="admin-nav">
+            <button data-view="dashboard-view" class="active">Dashboard</button>
+            <button data-view="service-view">Services</button>
+            <button data-view="queue-view">Queues</button>
+        </div>
+
+        <!-- ADMIN DASHBOARD -->
+        <div class="admin-view active" id="dashboard-view">
+            <div class="glass-card">
+                <h3>Services &amp; Queue Lengths</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>Service</th><th>Priority</th><th>In queue</th><th>Status</th><th>Quick actions</th></tr>
+                    </thead>
+                    <tbody id="dash-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SERVICE MANAGEMENT -->
+        <div class="admin-view" id="service-view">
+            <div class="dashboard-grid">
+                <div class="glass-card">
+                    <h3 id="form-title">Create Service</h3>
+                    <form id="service-form" novalidate>
+                        <div class="field">
+                            <label for="svc-name">Service Name <span class="req">*</span></label>
+                            <input type="text" id="svc-name" maxlength="100">
+                            <div class="hint"><span id="name-count">0</span>/100 characters</div>
+                            <div class="error" id="err-name"></div>
+                        </div>
+                        <div class="field">
+                            <label for="svc-desc">Description <span class="req">*</span></label>
+                            <textarea id="svc-desc"></textarea>
+                            <div class="error" id="err-desc"></div>
+                        </div>
+                        <div class="field">
+                            <label for="svc-duration">Expected Duration (minutes) <span class="req">*</span></label>
+                            <input type="number" id="svc-duration" min="1" step="1">
+                            <div class="error" id="err-duration"></div>
+                        </div>
+                        <div class="field">
+                            <label for="svc-priority">Priority Level</label>
+                            <select id="svc-priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="action-btn big" id="save-btn">Create service</button>
+                            <button type="button" class="action-btn big ghost" id="cancel-btn">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="glass-card">
+                    <h3>Existing Services</h3>
+                    <table class="admin-table">
+                        <thead><tr><th>Name</th><th>Min</th><th></th></tr></thead>
+                        <tbody id="svc-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUEUE MANAGEMENT -->
+        <div class="admin-view" id="queue-view">
+            <div class="glass-card">
+                <h3>Queue Management</h3>
+                <div class="toolbar">
+                    <select id="queue-select" aria-label="Select service"></select>
+                    <button class="action-btn big" id="serve-btn">Serve next user</button>
+                </div>
+                <p id="serving" class="subtitle" style="margin:0 0 10px;text-align:left"></p>
+                <ul class="queue-list" id="queue-list"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+    // Mock data (UI only)
+    let services = [
+        { id: 1, name: "Academic Advising", desc: "Course planning and degree audits.", duration: 30, priority: "medium", open: true,
+          queue: ["Maria Lopez", "James Carter", "Aisha Khan", "Tom Nguyen"] },
+        { id: 2, name: "Financial Aid Support", desc: "FAFSA, grants and loans.", duration: 45, priority: "high", open: true,
+          queue: ["Lena Brooks", "Omar Diaz", "Sara Kim", "Ben Ortiz", "Priya Shah", "Chris Lee", "Dana Fox", "Eli Ward"] },
+        { id: 3, name: "Business & Payment", desc: "Tuition payments and holds.", duration: 15, priority: "low", open: true,
+          queue: ["Noah Reed", "Ivy Chen"] },
+        { id: 4, name: "Registrar & Records", desc: "Transcripts and enrollment letters.", duration: 10, priority: "low", open: false,
+          queue: [] },
+        { id: 5, name: "Veteran Services", desc: "Benefits and certification help.", duration: 20, priority: "medium", open: true,
+          queue: ["Sam Hall", "Rita Moss", "Joe Park"] }
+    ];
+    let nextId = 6, editingId = null, selectedId = 1;
+
+    const $ = id => document.getElementById(id);
+    const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+    function toast(msg) {
+        const t = $("toast"); t.textContent = msg; t.classList.add("show");
+        setTimeout(() => t.classList.remove("show"), 1800);
+    }
+
+    // Navigation
+    function show(view) {
+        document.querySelectorAll(".admin-view").forEach(v => v.classList.toggle("active", v.id === view));
+        document.querySelectorAll(".admin-nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    }
+    document.querySelectorAll(".admin-nav button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
+
+    // Dashboard
+    function renderDashboard() {
+        $("dash-body").innerHTML = services.map(s => `
+            <tr>
+                <td>${esc(s.name)}</td>
+                <td><span class="badge ${s.priority}">${cap(s.priority)}</span></td>
+                <td>${s.queue.length}</td>
+                <td><span class="badge ${s.open ? "open" : "closed"}">${s.open ? "Open" : "Closed"}</span></td>
+                <td class="row-actions">
+                    <button class="action-btn ${s.open ? "danger" : ""}" onclick="toggleQueue(${s.id})">${s.open ? "Close queue" : "Open queue"}</button>
+                    <button class="action-btn ghost" onclick="manageQueue(${s.id})">View queue</button>
+                </td>
+            </tr>`).join("") || `<tr><td colspan="5" class="empty">No services yet. Create one in the Services tab.</td></tr>`;
+    }
+
+    function toggleQueue(id) {
+        const s = services.find(x => x.id === id);
+        s.open = !s.open;
+        toast(`${s.name} queue ${s.open ? "opened" : "closed"}`);
+        renderAll();
+    }
+
+    function manageQueue(id) { selectedId = id; renderAll(); show("queue-view"); }
+
+    // Service management
+    function renderServices() {
+        $("svc-body").innerHTML = services.map(s => `
+            <tr>
+                <td>${esc(s.name)}</td>
+                <td>${s.duration}</td>
+                <td><button class="action-btn ghost" onclick="editService(${s.id})">Edit</button></td>
+            </tr>`).join("");
+    }
+
+    function resetForm() {
+        editingId = null;
+        $("service-form").reset();
+        $("name-count").textContent = 0;
+        $("form-title").textContent = "Create Service";
+        $("save-btn").textContent = "Create service";
+        ["name", "desc", "duration"].forEach(k => $("err-" + k).textContent = "");
+    }
+
+    function editService(id) {
+        const s = services.find(x => x.id === id);
+        editingId = id;
+        $("svc-name").value = s.name;
+        $("svc-desc").value = s.desc;
+        $("svc-duration").value = s.duration;
+        $("svc-priority").value = s.priority;
+        $("name-count").textContent = s.name.length;
+        $("form-title").textContent = "Edit Service";
+        $("save-btn").textContent = "Save changes";
+        show("service-view");
+    }
+
+    $("svc-name").addEventListener("input", e => $("name-count").textContent = e.target.value.length);
+    $("cancel-btn").addEventListener("click", resetForm);
+
+    $("service-form").addEventListener("submit", e => {
+        e.preventDefault();
+        const name = $("svc-name").value.trim();
+        const desc = $("svc-desc").value.trim();
+        const dur = parseInt($("svc-duration").value, 10);
+        const priority = $("svc-priority").value;
+
+        $("err-name").textContent = !name ? "Service name is required." : name.length > 100 ? "Name must be 100 characters or less." : "";
+        $("err-desc").textContent = !desc ? "Description is required." : "";
+        $("err-duration").textContent = !dur || dur < 1 ? "Enter the expected duration in minutes (1 or more)." : "";
+        if (["name", "desc", "duration"].some(k => $("err-" + k).textContent)) return;
+
+        if (editingId) {
+            Object.assign(services.find(s => s.id === editingId), { name, desc, duration: dur, priority });
+            toast("Service updated");
+        } else {
+            services.push({ id: nextId++, name, desc, duration: dur, priority, open: true, queue: [] });
+            toast("Service created");
+        }
+        resetForm();
+        renderAll();
+    });
+
+    // Queue management
+    function renderQueue() {
+        const sel = $("queue-select");
+        if (!services.find(s => s.id === selectedId) && services.length) selectedId = services[0].id;
+        sel.innerHTML = services.map(s => `<option value="${s.id}" ${s.id === selectedId ? "selected" : ""}>${esc(s.name)} (${s.queue.length})</option>`).join("");
+        const s = services.find(x => x.id === selectedId);
+        if (!s) { $("queue-list").innerHTML = `<li class="empty">No services available.</li>`; return; }
+        $("serve-btn").disabled = !s.queue.length;
+        $("queue-list").innerHTML = s.queue.length ? s.queue.map((u, i) => `
+            <li>
+                <span class="pos">${i + 1}</span>
+                <span class="name">${esc(u)}</span>
+                <button class="action-btn ghost" ${i === 0 ? "disabled" : ""} onclick="move(${i}, -1)" aria-label="Move up"><i class='bx bx-up-arrow-alt'></i></button>
+                <button class="action-btn ghost" ${i === s.queue.length - 1 ? "disabled" : ""} onclick="move(${i}, 1)" aria-label="Move down"><i class='bx bx-down-arrow-alt'></i></button>
+                <button class="action-btn danger" onclick="removeUser(${i})">Remove</button>
+            </li>`).join("") : `<li class="empty">Nobody is waiting in this queue.</li>`;
+    }
+
+    $("queue-select").addEventListener("change", e => { selectedId = +e.target.value; $("serving").textContent = ""; renderQueue(); });
+
+    function current() { return services.find(s => s.id === selectedId); }
+
+    function move(i, dir) {
+        const q = current().queue;
+        [q[i], q[i + dir]] = [q[i + dir], q[i]];
+        renderAll();
+    }
+
+    function removeUser(i) {
+        const [u] = current().queue.splice(i, 1);
+        toast(`${u} removed from queue`);
+        renderAll();
+    }
+
+    $("serve-btn").addEventListener("click", () => {
+        const u = current().queue.shift();
+        if (u) { $("serving").textContent = "Now serving: " + u; toast(`Serving ${u}`); }
+        renderAll();
+    });
+
+    function renderAll() { renderDashboard(); renderServices(); renderQueue(); }
+    renderAll();
+</script>
+</body>
+</html>
