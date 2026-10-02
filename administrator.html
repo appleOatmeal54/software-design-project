@@ -112,12 +112,16 @@
     ];
     let nextId = 6, editingId = null, selectedId = 1;
 
-    const $ = id => document.getElementById(id);
+    // shortcuts to simplify code
+    // getElement == document.getElementById
+    // esc == escape HTML special characters
+    // cap == capitalize first letter of string
+    const getElement = id => document.getElementById(id);
     const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
     function toast(msg) {
-        const t = $("toast"); t.textContent = msg; t.classList.add("show");
+        const t = getElement("toast"); t.textContent = msg; t.classList.add("show");
         setTimeout(() => t.classList.remove("show"), 1800);
     }
 
@@ -130,7 +134,7 @@
 
     // Dashboard
     function renderDashboard() {
-        $("dash-body").innerHTML = services.map(s => `
+        getElement("dash-body").innerHTML = services.map(s => `
             <tr>
                 <td>${esc(s.name)}</td>
                 <td><span class="badge ${s.priority}">${cap(s.priority)}</span></td>
@@ -154,7 +158,7 @@
 
     // Service management
     function renderServices() {
-        $("svc-body").innerHTML = services.map(s => `
+        getElement("svc-body").innerHTML = services.map(s => `
             <tr>
                 <td>${esc(s.name)}</td>
                 <td>${s.duration}</td>
@@ -164,40 +168,40 @@
 
     function resetForm() {
         editingId = null;
-        $("service-form").reset();
-        $("name-count").textContent = 0;
-        $("form-title").textContent = "Create Service";
-        $("save-btn").textContent = "Create service";
-        ["name", "desc", "duration"].forEach(k => $("err-" + k).textContent = "");
+        getElement("service-form").reset();
+        getElement("name-count").textContent = 0;
+        getElement("form-title").textContent = "Create Service";
+        getElement("save-btn").textContent = "Create service";
+        ["name", "desc", "duration"].forEach(k => getElement("err-" + k).textContent = "");
     }
 
     function editService(id) {
         const s = services.find(x => x.id === id);
         editingId = id;
-        $("svc-name").value = s.name;
-        $("svc-desc").value = s.desc;
-        $("svc-duration").value = s.duration;
-        $("svc-priority").value = s.priority;
-        $("name-count").textContent = s.name.length;
-        $("form-title").textContent = "Edit Service";
-        $("save-btn").textContent = "Save changes";
+        getElement("svc-name").value = s.name;
+        getElement("svc-desc").value = s.desc;
+        getElement("svc-duration").value = s.duration;
+        getElement("svc-priority").value = s.priority;
+        getElement("name-count").textContent = s.name.length;
+        getElement("form-title").textContent = "Edit Service";
+        getElement("save-btn").textContent = "Save changes";
         show("service-view");
     }
 
-    $("svc-name").addEventListener("input", e => $("name-count").textContent = e.target.value.length);
-    $("cancel-btn").addEventListener("click", resetForm);
+    getElement("svc-name").addEventListener("input", e => getElement("name-count").textContent = e.target.value.length);
+    getElement("cancel-btn").addEventListener("click", resetForm);
 
-    $("service-form").addEventListener("submit", e => {
+    getElement("service-form").addEventListener("submit", e => {
         e.preventDefault();
-        const name = $("svc-name").value.trim();
-        const desc = $("svc-desc").value.trim();
-        const dur = parseInt($("svc-duration").value, 10);
-        const priority = $("svc-priority").value;
+        const name = getElement("svc-name").value.trim();
+        const desc = getElement("svc-desc").value.trim();
+        const dur = parseInt(getElement("svc-duration").value, 10);
+        const priority = getElement("svc-priority").value;
 
-        $("err-name").textContent = !name ? "Service name is required." : name.length > 100 ? "Name must be 100 characters or less." : "";
-        $("err-desc").textContent = !desc ? "Description is required." : "";
-        $("err-duration").textContent = !dur || dur < 1 ? "Enter the expected duration in minutes (1 or more)." : "";
-        if (["name", "desc", "duration"].some(k => $("err-" + k).textContent)) return;
+        getElement("err-name").textContent = !name ? "Service name is required." : name.length > 100 ? "Name must be 100 characters or less." : "";
+        getElement("err-desc").textContent = !desc ? "Description is required." : "";
+        getElement("err-duration").textContent = !dur || dur < 1 ? "Enter the expected duration in minutes (1 or more)." : "";
+        if (["name", "desc", "duration"].some(k => getElement("err-" + k).textContent)) return;
 
         if (editingId) {
             Object.assign(services.find(s => s.id === editingId), { name, desc, duration: dur, priority });
@@ -212,13 +216,13 @@
 
     // Queue management
     function renderQueue() {
-        const sel = $("queue-select");
+        const sel = getElement("queue-select");
         if (!services.find(s => s.id === selectedId) && services.length) selectedId = services[0].id;
         sel.innerHTML = services.map(s => `<option value="${s.id}" ${s.id === selectedId ? "selected" : ""}>${esc(s.name)} (${s.queue.length})</option>`).join("");
         const s = services.find(x => x.id === selectedId);
-        if (!s) { $("queue-list").innerHTML = `<li class="empty">No services available.</li>`; return; }
-        $("serve-btn").disabled = !s.queue.length;
-        $("queue-list").innerHTML = s.queue.length ? s.queue.map((u, i) => `
+        if (!s) { getElement("queue-list").innerHTML = `<li class="empty">No services available.</li>`; return; }
+        getElement("serve-btn").disabled = !s.queue.length;
+        getElement("queue-list").innerHTML = s.queue.length ? s.queue.map((u, i) => `
             <li>
                 <span class="pos">${i + 1}</span>
                 <span class="name">${esc(u)}</span>
@@ -228,7 +232,7 @@
             </li>`).join("") : `<li class="empty">Nobody is waiting in this queue.</li>`;
     }
 
-    $("queue-select").addEventListener("change", e => { selectedId = +e.target.value; $("serving").textContent = ""; renderQueue(); });
+    getElement("queue-select").addEventListener("change", e => { selectedId = +e.target.value; getElement("serving").textContent = ""; renderQueue(); });
 
     function current() { return services.find(s => s.id === selectedId); }
 
@@ -244,9 +248,9 @@
         renderAll();
     }
 
-    $("serve-btn").addEventListener("click", () => {
+    getElement("serve-btn").addEventListener("click", () => {
         const u = current().queue.shift();
-        if (u) { $("serving").textContent = "Now serving: " + u; toast(`Serving ${u}`); }
+        if (u) { getElement("serving").textContent = "Now serving: " + u; toast(`Serving ${u}`); }
         renderAll();
     });
 
