@@ -38,21 +38,21 @@
             <div class="dashboard-grid">
                 <div class="glass-card">
                     <h3 id="form-title">Create Service</h3>
-                    <form id="service-form" novalidate>
+                    <form id="service-form">
                         <div class="field">
                             <label for="svc-name">Service Name <span class="req">*</span></label>
-                            <input type="text" id="svc-name" maxlength="100">
+                            <input type="text" id="svc-name" maxlength="100" required>
                             <div class="hint"><span id="name-count">0</span>/100 characters</div>
                             <div class="error" id="err-name"></div>
                         </div>
                         <div class="field">
                             <label for="svc-desc">Description <span class="req">*</span></label>
-                            <textarea id="svc-desc"></textarea>
+                            <textarea id="svc-desc" required></textarea>
                             <div class="error" id="err-desc"></div>
                         </div>
                         <div class="field">
                             <label for="svc-duration">Expected Duration (minutes) <span class="req">*</span></label>
-                            <input type="number" id="svc-duration" min="1" step="1">
+                            <input type="number" id="svc-duration" min="1" max="1440" step="1" required>
                             <div class="error" id="err-duration"></div>
                         </div>
                         <div class="field">
@@ -200,7 +200,7 @@
 
         getElement("err-name").textContent = !name ? "Service name is required." : name.length > 100 ? "Name must be 100 characters or less." : "";
         getElement("err-desc").textContent = !desc ? "Description is required." : "";
-        getElement("err-duration").textContent = !dur || dur < 1 ? "Enter the expected duration in minutes (1 or more)." : "";
+        getElement("err-duration").textContent = !dur ? "Expected duration is required." : dur < 1 ? "Duration must at least be 1 min" : dur > 1440 ? "Duration cannot exceed a day" : "";
         if (["name", "desc", "duration"].some(k => getElement("err-" + k).textContent)) return;
 
         if (editingId) {
