@@ -37,14 +37,16 @@
                 <div class="glass-card status-card">
                     <h3>Queue Status</h3>
                     <div class="status-info">
-                        <p>Position in queue: <strong>3</strong></p>
-                        <p>ETA time: <strong>15 mins</strong></p>
+                        <p>Position in queue: <strong>--</strong></p>
+                        <p>ETA time: <strong>--</strong></p>
                     </div>
                     <div class="notify-options">
                         <label><input type="checkbox"> Notify by Phone</label>
                         <label><input type="checkbox"> Notify by Email</label>
                     </div>
-                    <button class="btn leave-btn" onclick="leaveQueue()">Leave Queue</button>
+                    <button class="btn leave-btn" id="leave-queue-btn" onclick="leaveQueue()" disabled>
+                        Leave Queue
+                    </button>
                 </div>
 
                 <!-- Updates Card -->
@@ -153,6 +155,7 @@
         let queueTimer = null;
         let notificationTimer = null;
         let currentQueueName = "";
+        let inQueue = false;
         const notifySound = new Audio("notification.mp3");
 
         // Toggle to Services View
@@ -171,21 +174,43 @@
 
         // Mock function to clear queue status when "Leave Queue" is clicked
         function leaveQueue() {
+            if (!inQueue) {
+                return;
+            }
+
+            if (queueTimer) {
+                clearTimeout(queueTimer);
+                queueTimer = null;
+            }
+
+            inQueue = false;
+            document.getElementById("leave-queue-btn").disabled = true;
+
             document.querySelector('.status-info').innerHTML = 
-                "<p>Position in queue: <strong>--</strong></p><p>" + 
-                "ETA time: <strong>--</strong></p>";
+                "<p>Position in queue: <strong>--</strong></p>" + 
+                "<p>ETA time: <strong>--</strong></p>";
 
             addUpdate(
                 "You left " + currentQueueName
             );
+
+            currentQueueName = "";
         }
 
         // Mock function for joining a queue
         function joinQueue(peopleInQueue, totalWaitTime, serviceName) {
+            if (inQueue) {
+                return;
+            }
+
             const position = peopleInQueue;
             let remainingMinutes = totalWaitTime;
             const timePerPerson = totalWaitTime / peopleInQueue;
+            
             currentQueueName = serviceName;
+
+            inQueue = true;
+            document.getElementById("leave-queue-btn").disabled = false;
 
             servicesView.style.display = "none";
             dashboardView.style.display = "block";

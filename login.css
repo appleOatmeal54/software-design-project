@@ -175,3 +175,18 @@
   font-size: 23px;
   flex-shrink: 0;
 }
+
+/* FORM VALIDATION */
+
+.form-error {
+    color: #ff6b6b;
+    font-size: 13px;
+    margin-top: -20px;
+    margin-bottom: 15px;
+    min-height: 18px;
+    text-align: left;
+}
+
+.input-box.error input {
+    border-color: #ff6b6b;
+}
