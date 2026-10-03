@@ -10,6 +10,21 @@
 </head>
 <body>
 
+    <!-- NOTIFICATION POPUP -->
+<div class="notification-popup" id="notification-popup">
+    <i class='bx bx-bell'></i>
+
+    <div class="notification-popup-content">
+        <div class="notification-popup-title" id="notification-title">
+            Queue Update
+        </div>
+
+        <div class="notification-popup-message" id="notification-message">
+            Your queue has been updated.
+        </div>
+    </div>
+</div>
+
     <div class="dashboard-container">
 
         <!-- DASHBOARD VIEW -->
@@ -35,11 +50,11 @@
                 <!-- Updates Card -->
                 <div class="glass-card updates-card">
                     <h3>Updates</h3>
-                    <ul class="notification-list">
-                        <li><i class='bx bx-bell'></i> Moved from position 4 to 3</li>
-                        <li><i class='bx bx-check-circle'></i> Yesterday: Served</li>
-                        <li><i class='bx bx-time-five'></i> Wait time updated</li>
+                    <ul class="notification-list" id="notification-list">
                     </ul>
+                    <button class="btn clear-updates-btn" onclick="clearUpdates()">
+                        Clear Updates
+                    </button>
                 </div>
 
                 <!-- Services Card -->
@@ -89,7 +104,7 @@
                     <h3>Academic Advising</h3>
                     <p>Average wait time: 30m</p>
                     <p>Current People in Q: 4</p>
-                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                    <button class="btn join-btn" onclick="joinQueue(4, 30, 'Academic Advising')">Join Queue</button>
                 </div>
 
                 <!-- Service 2 -->
@@ -97,7 +112,7 @@
                     <h3>Financial Aid Support</h3>
                     <p>Average wait time: 45m</p>
                     <p>Current People in Q: 8</p>
-                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                    <button class="btn join-btn" onclick="joinQueue(8, 45, 'Financial Aid Support')">Join Queue</button>
                 </div>
 
                 <!-- Service 3 -->
@@ -105,7 +120,7 @@
                     <h3>Business & Payment</h3>
                     <p>Average wait time: 15m</p>
                     <p>Current People in Q: 2</p>
-                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                    <button class="btn join-btn" onclick="joinQueue(2, 15, 'Business & Payment')">Join Queue</button>
                 </div>
 
                 <!-- Service 4 -->
@@ -113,7 +128,7 @@
                     <h3>Registrar & Records</h3>
                     <p>Average wait time: 10m</p>
                     <p>Current People in Q: 1</p>
-                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                    <button class="btn join-btn" onclick="joinQueue(1, 10, 'Registrar & Records')">Join Queue</button>
                 </div>
 
                 <!-- Service 5 -->
@@ -121,7 +136,7 @@
                     <h3>Veteran Services</h3>
                     <p>Average wait time: 20m</p>
                     <p>Current People in Q: 3</p>
-                    <button class="btn join-btn" onclick="joinQueue()">Join Queue</button>
+                    <button class="btn join-btn" onclick="joinQueue(3, 20, 'Veteran Services')">Join Queue</button>
                 </div>
             </div>
         </div>
@@ -134,6 +149,11 @@
         
         const showServicesBtn = document.getElementById("show-services");
         const showDashboardBtn = document.getElementById("show-dashboard");
+
+        let queueTimer = null;
+        let notificationTimer = null;
+        let currentQueueName = "";
+        const notifySound = new Audio("notification.mp3");
 
         // Toggle to Services View
         showServicesBtn.addEventListener("click", function(event) {
@@ -151,16 +171,135 @@
 
         // Mock function to clear queue status when "Leave Queue" is clicked
         function leaveQueue() {
-            alert("You have left the queue. Position and ETA cleared.");
-            document.querySelector('.status-info').innerHTML = "<p>Position in queue: <strong>--</strong></p><p>ETA time: <strong>--</strong></p>";
+            document.querySelector('.status-info').innerHTML = 
+                "<p>Position in queue: <strong>--</strong></p><p>" + 
+                "ETA time: <strong>--</strong></p>";
+
+            addUpdate(
+                "You left " + currentQueueName
+            );
         }
 
         // Mock function for joining a queue
-        function joinQueue() {
-            alert("Successfully joined queue! Returning to dashboard.");
+        function joinQueue(peopleInQueue, totalWaitTime, serviceName) {
+            const position = peopleInQueue;
+            let remainingMinutes = totalWaitTime;
+            const timePerPerson = totalWaitTime / peopleInQueue;
+            currentQueueName = serviceName;
+
             servicesView.style.display = "none";
             dashboardView.style.display = "block";
-            document.querySelector('.status-info').innerHTML = "<p>Position in queue: <strong>New</strong></p><p>ETA time: <strong>Calculating...</strong></p>";
+
+            document.querySelector('.status-info').innerHTML =
+            "<p>Position in queue: <strong>" + position + "</strong></p>" +
+            "<p>ETA time: <strong>" + totalWaitTime + " mins</strong></p>";
+            
+            addUpdate(
+                "You just joined " + serviceName
+            );
+
+            if (queueTimer) {
+                clearTimeout(queueTimer);
+            }
+
+            startQueueSimulation(position, remainingMinutes, timePerPerson);
+        }
+        
+        // In real time, the Queue Status is updated, a message is added to Updates, and 
+        // a notification is created every time the user moves ahead in the queue
+        function startQueueSimulation(position, remainingMinutes, timePerPerson) {
+            queueTimer = setTimeout(function updateQueue() {
+                position--;
+                remainingMinutes -= timePerPerson;
+
+                if (position > 0) {
+
+                    document.querySelector('.status-info').innerHTML = 
+                        "<p>Position in queue: <strong>" + position + "</strong></p>" +
+                        "<p>ETA time: <strong>" + Math.max(0, Math.round(remainingMinutes)) + " mins</strong></p>";
+                    
+                    showNotification(
+                        "Queue Update",
+                        "You are now " + getPositionText(position) + " in line"  
+                    );
+
+                    addUpdate(
+                        "You are now " + getPositionText(position) + " in line"
+                    );
+                    
+                    startQueueSimulation(position, remainingMinutes, timePerPerson);
+                } else {
+
+                    remainingMinutes = 0;
+
+                    document.querySelector('.status-info').innerHTML =
+                        "<p>Position in queue: <strong>0</strong></p>" +
+                        "<p>ETA time: <strong>0 mins</strong></p>";
+
+                    showNotification(
+                        "Queue Update",
+                        "Your service is now ready!"
+                    );
+
+                    addUpdate(
+                        "Your service is now ready!"
+                    );
+                }
+            }, timePerPerson * 1000);
+        }
+
+        // Shows a notification whenever the user moves ahead in the queue
+        function showNotification(title, message) {
+            const popup = document.getElementById("notification-popup");
+            const titleElement = document.getElementById("notification-title");
+            const messageElement = document.getElementById("notification-message");
+
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+
+            popup.classList.add("show");
+
+            notifySound.currentTime = 0;
+            notifySound.play();
+
+            setTimeout(function() {
+                popup.classList.remove("show");
+            }, 4000);
+        }
+        
+        // Adds notifications to the Updates section
+        function addUpdate(message) {
+            const notificationList = document.getElementById("notification-list");
+            const update = document.createElement("li");
+
+            update.innerHTML =
+                "<i class='bx bx-log-in-circle'></i>" +
+                message;
+
+            notificationList.append(update);
+        }
+        
+        // Translates the position number into its english equivalent
+        function getPositionText(position) {
+            const positions = {
+                1: "first",
+                2: "second",
+                3: "third",
+                4: "fourth",
+                5: "fifth",
+                6: "sixth",
+                7: "seventh",
+                8: "eighth",
+                9: "ninth",
+                10: "tenth"
+            };
+            return positions[position] || position + "th";
+        }
+
+        // Clears the Update section of all messages
+        function clearUpdates() {
+            const notificationList = document.getElementById("notification-list");
+            notificationList.innerHTML = "";
         }
     </script>
 </body>

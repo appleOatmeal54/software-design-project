@@ -57,6 +57,11 @@
     grid-column: span 2;
 }
 
+.updates-card {
+    grid-column: 2;
+    grid-row: 1 / 3;
+}
+
 /* Specific Card Styling */
 
 .status-info p,
@@ -74,6 +79,8 @@
 
 .notification-list {
     list-style: none;
+    height: 350px;
+    overflow-y: auto;
 }
 
 .notification-list li {
@@ -81,6 +88,61 @@
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+/* Notification Popup */
+
+.notification-popup {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    width: 320px;
+    padding: 16px 20px;
+
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+
+    color: #fff;
+
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    opacity: 0;
+    transform: translateX(120%);
+
+    transition: opacity 0.3s ease, transform 0.3s ease;
+
+    z-index: 1000;
+}
+
+.notification-popup.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-popup i {
+    font-size: 24px;
+    color: #3b82f6;
+}
+
+.notification-popup-content {
+    flex: 1;
+}
+
+.notification-popup-title {
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.notification-popup-message {
+    font-size: 14px;
+    color: #ddd;
 }
 
 /* History Table */
