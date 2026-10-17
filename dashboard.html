@@ -30,6 +30,8 @@
         <!-- DASHBOARD VIEW -->
         <div class="dashboard-wrapper" id="dashboard-view">
             <h1>Queue<span>Smart</span> User Dashboard</h1>
+
+            <button type="button" class="btn" id="logout-btn">Logout</button>
             
             <div class="dashboard-grid">
                 
@@ -326,6 +328,71 @@
             const notificationList = document.getElementById("notification-list");
             notificationList.innerHTML = "";
         }
+
+
+    // Check whether the user is logged in
+    async function checkUserAccess() {
+
+        // Retrieve the authentication token saved during login
+        const token = sessionStorage.getItem("token");
+
+        // Redirect to login if no token exists
+        if (!token) {
+            window.location.replace("/Login.html");
+            return;
+        }
+
+        try {
+            // Ask the backend to verify the user's token
+            const response = await fetch("/api/me", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            // Redirect if the token is invalid or expired
+            if (!response.ok) {
+                sessionStorage.removeItem("token");
+                window.location.replace("/Login.html");
+                return;
+            }
+
+            // Retrieve the authenticated user's information
+            const data = await response.json();
+
+            // Redirect administrators to their own dashboard
+            if (data.user.role === "admin") {
+                window.location.replace("/administrator.html");
+                return;
+            }
+
+            // Reject accounts without the regular user role
+            if (data.user.role !== "user") {
+                window.location.replace("/Login.html");
+                return;
+            }
+
+        } catch (error) {
+            // Handle errors when verifying authentication
+            console.error("Authentication error:", error);
+            window.location.replace("/Login.html");
+        }
+    }
+
+    // Verify the user's authentication when the page loads
+    checkUserAccess();
+
+    // Log out the user when the Logout button is clicked
+    document.getElementById("logout-btn").addEventListener("click", function() {
+
+        // Remove the authentication token stored during login
+        sessionStorage.removeItem("token");
+
+        // Redirect the user back to the login page
+        window.location.replace("/Login.html");
+    });
+
+
     </script>
 </body>
 </html>

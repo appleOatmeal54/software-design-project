@@ -18,6 +18,7 @@
             <button data-view="dashboard-view" class="active">Dashboard</button>
             <button data-view="service-view">Services</button>
             <button data-view="queue-view">Queues</button>
+            <button type="button" id="logout-btn">Logout</button>
         </div>
 
         <!-- ADMIN DASHBOARD -->
@@ -128,7 +129,10 @@
     // Navigation
     function show(view) {
         document.querySelectorAll(".admin-view").forEach(v => v.classList.toggle("active", v.id === view));
-        document.querySelectorAll(".admin-nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+        // Only attach view-switching behavior to navigation buttons
+        document.querySelectorAll(".admin-nav button[data-view]").forEach(b =>
+            b.addEventListener("click", () => show(b.dataset.view))
+    );
     }
     document.querySelectorAll(".admin-nav button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
 
@@ -256,6 +260,65 @@
 
     function renderAll() { renderDashboard(); renderServices(); renderQueue(); }
     renderAll();
+
+    // Check whether the logged-in user is an administrator
+    async function checkAdminAccess() {
+
+        // Retrieve the token saved during login
+        const token = sessionStorage.getItem("token");
+
+        // Redirect users who haven't logged in
+        if (!token) {
+            window.location.replace("/Login.html");
+            return;
+        }
+
+        try {
+            // Ask the backend to verify the user's token
+            const response = await fetch("/api/me", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            // Redirect if the token is invalid or expired
+            if (!response.ok) {
+                sessionStorage.removeItem("token");
+                window.location.replace("/Login.html");
+                return;
+            }
+
+            // Get the authenticated user's information
+            const data = await response.json();
+
+            // Only administrators can remain on this page
+            if (data.user.role !== "admin") {
+                window.location.replace("/dashboard.html");
+                return;
+            }
+
+        } catch (error) {
+            // Handle errors when checking authentication
+            console.error("Authentication error:", error);
+            window.location.replace("/Login.html");
+        }
+    }
+
+    // Check administrator permissions when the page loads
+    checkAdminAccess();
+
+
+    // Log out the administrator when Logout is clicked
+    document.getElementById("logout-btn").addEventListener("click", function() {
+
+        // Remove the authentication token saved during login
+        sessionStorage.removeItem("token");
+
+        // Redirect the administrator to the login page
+        window.location.replace("/Login.html");
+    });
+
+
 </script>
 </body>
 </html>

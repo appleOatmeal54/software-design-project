@@ -88,7 +88,7 @@
                 </div>
 
                 <div class="input-box">
-                    <input type="password" id="register-password" name="password" placeholder="Password" autocomplete="new-password" minlength="8" maxlength="128" required>
+                    <input type="password" id="register-password" name="password" placeholder="Password" autocomplete="new-password" minlength="8" maxlength="20" required>
                     <i class="bx bxs-lock"></i>
                 </div>
 
@@ -119,7 +119,8 @@
         const showRegister = document.getElementById("show-register");
         const showLogin = document.getElementById("show-login");
         
-        registerForm.addEventListener("submit", function(event) {
+        registerForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
             const password = document.getElementById("register-password").value;
             const confirmPassword = document.getElementById("confirm-password").value;
             const passwordError = document.getElementById("password-error");
@@ -131,12 +132,51 @@
             confirmPasswordBox.classList.remove("error");
 
             if (password !== confirmPassword) {
-                event.preventDefault();
                 passwordError.textContent = "Passwords do not match";
                 passwordBox.classList.add("error");
                 confirmPasswordBox.classList.add("error");
                 return;
             }
+
+            // Get the email entered in the registration form
+            const email = document.getElementById("register-email").value;
+
+            try {
+                // Send the registration information to our backend API
+                const response = await fetch("/api/register", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                // Convert the backend response from JSON into a JavaScript object
+                const data = await response.json();
+
+                // Check whether the backend accepted the registration
+                if (!response.ok) {
+                    passwordError.textContent = data.message;
+                    return;
+                }
+
+                // Notify the user that registration was successful
+                alert(data.message);
+
+                // Switch back to the login form
+                registerForm.reset();
+                registerForm.style.display = "none";
+                loginForm.style.display = "block";
+
+            } catch (error) {
+                // Display an error if the backend cannot be reached
+                console.error("Registration error:", error);
+                passwordError.textContent = "Unable to connect to the server";
+            }
+
         });
 
         registerForm.addEventListener("invalid", function() {
@@ -158,6 +198,57 @@
             registerForm.style.display = "none";
             loginForm.style.display = "block";
         });
+
+
+        // Login API: send the user's credentials to the backend
+        loginForm.addEventListener("submit", async function(event) {
+
+            // Prevent the page from reloading when Login is clicked
+            event.preventDefault();
+
+            // Get the email and password entered in the login form
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                // Send the login information to our backend
+                const response = await fetch("/api/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                // Convert the backend response into a JavaScript object
+                const data = await response.json();
+
+                // Check whether the login credentials are valid
+                if (!response.ok) {
+                    alert(data.message);
+                    return;
+                }
+
+                // Store the authentication token for the current browser tab
+                sessionStorage.setItem("token", data.token);
+
+                // Redirect the user based on their account role
+                if (data.user.role === "admin") {
+                    window.location.href = "/administrator.html";
+                } else {
+                    window.location.href = "/dashboard.html";
+                }
+
+            } catch (error) {
+                // Display an error if the login request fails
+                console.error("Login error:", error);
+                alert("Unable to complete login. Please try again.");
+            }
+        });
+
     </script>
 
 </body>

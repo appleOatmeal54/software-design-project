@@ -1,0 +1,8 @@
+# Ignore installed Node.js packages
+backend/node_modules/
+
+# Ignore environment variables containing secrets
+backend/.env
+
+# Ignore generated test coverage reports
+backend/coverage/
