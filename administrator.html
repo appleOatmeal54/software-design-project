@@ -151,11 +151,33 @@
             </tr>`).join("") || `<tr><td colspan="5" class="empty">No services yet. Create one in the Services tab.</td></tr>`;
     }
 
-    function toggleQueue(id) {
-        const s = services.find(x => x.id === id);
-        s.open = !s.open;
-        toast(`${s.name} queue ${s.open ? "opened" : "closed"}`);
-        renderAll();
+    async function toggleQueue(id) {
+        // Use String() so it matches whether id is a number (1) or string ("1")
+        const s = services.find(x => String(x.id) === String(id));
+        if (!s) return;
+
+        const newStatus = !s.open;
+
+        try {
+            const response = await fetch(`/services/${id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ status: newStatus ? "Open" : "Closed" })
+            });
+
+            if (response.ok) {
+                s.open = newStatus;
+                toast(`${s.name} queue ${s.open ? "opened" : "closed"}`);
+                renderAll();
+            } else {
+                toast("Error updating queue status on the server.");
+            }
+        } catch (error) {
+            console.error("Failed to connect to backend:", error);
+            toast("Network error. Is the server running?");
+        }
     }
 
     function manageQueue(id) { selectedId = id; renderAll(); show("queue-view"); }
@@ -193,9 +215,7 @@
     }
 
     getElement("svc-name").addEventListener("input", e => getElement("name-count").textContent = e.target.value.length);
-    getElement("cancel-btn").addEventListener("click", resetForm);
-
-    getElement("service-form").addEventListener("submit", e => {
+    getElement("service-form").addEventListener("submit", async e => {
         e.preventDefault();
         const name = getElement("svc-name").value.trim();
         const desc = getElement("svc-desc").value.trim();
@@ -208,17 +228,30 @@
         if (["name", "desc", "duration"].some(k => getElement("err-" + k).textContent)) return;
 
         if (editingId) {
+            await fetch(`/services/${editingId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description: desc, expectedDuration: dur, priorityLevel: cap(priority) })
+            });
             Object.assign(services.find(s => s.id === editingId), { name, desc, duration: dur, priority });
             toast("Service updated");
         } else {
-            services.push({ id: nextId++, name, desc, duration: dur, priority, open: true, queue: [] });
-            toast("Service created");
+            const res = await fetch("/services", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description: desc, expectedDuration: dur, priorityLevel: cap(priority) })
+            });
+            if (res.ok) {
+                services.push({ id: nextId++, name, desc, duration: dur, priority, open: true, queue: [] });
+                toast("Service created");
+            }
         }
         resetForm();
         renderAll();
     });
 
     // Queue management
+
     function renderQueue() {
         const sel = getElement("queue-select");
         if (!services.find(s => s.id === selectedId) && services.length) selectedId = services[0].id;
@@ -246,20 +279,30 @@
         renderAll();
     }
 
-    function removeUser(i) {
-        const [u] = current().queue.splice(i, 1);
+    async function removeUser(i) {
+        const svc = current();
+        const userName = svc.queue[i];
+        await fetch("/queue/leave", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ serviceId: svc.id, userName })
+        });
+        const [u] = svc.queue.splice(i, 1);
         toast(`${u} removed from queue`);
         renderAll();
     }
 
-    getElement("serve-btn").addEventListener("click", () => {
-        const u = current().queue.shift();
+    getElement("serve-btn").addEventListener("click", async () => {
+        const svc = current();
+        await fetch("/queue/serve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ serviceId: svc.id })
+        });
+        const u = svc.queue.shift();
         if (u) { getElement("serving").textContent = "Now serving: " + u; toast(`Serving ${u}`); }
         renderAll();
     });
-
-    function renderAll() { renderDashboard(); renderServices(); renderQueue(); }
-    renderAll();
 
     // Check whether the logged-in user is an administrator
     async function checkAdminAccess() {

@@ -174,10 +174,32 @@
             dashboardView.style.display = "block";
         });
 
-        // Mock function to clear queue status when "Leave Queue" is clicked
-        function leaveQueue() {
-            if (!inQueue) {
-                return;
+        let currentServiceId = null;
+        let currentUserName = sessionStorage.getItem("userEmail") || "Student User";
+
+        // Map service names to IDs for the existing HTML buttons
+        const serviceNameMap = {
+            "Academic Advising": "1",
+            "Financial Aid Support": "2",
+            "Business & Payment": "3",
+            "Registrar & Records": "4",
+            "Veteran Services": "5"
+        };
+
+        async function leaveQueue() {
+            if (!inQueue) return;
+
+            try {
+                await fetch("/queue/leave", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        serviceId: currentServiceId,
+                        userName: currentUserName
+                    })
+                });
+            } catch (err) {
+                console.error("Error leaving queue:", err);
             }
 
             if (queueTimer) {
@@ -192,24 +214,43 @@
                 "<p>Position in queue: <strong>--</strong></p>" + 
                 "<p>ETA time: <strong>--</strong></p>";
 
-            addUpdate(
-                "You left " + currentQueueName
-            );
-
+            addUpdate("You left " + currentQueueName);
             currentQueueName = "";
+            currentServiceId = null;
         }
 
-        // Mock function for joining a queue
-        function joinQueue(peopleInQueue, totalWaitTime, serviceName) {
-            if (inQueue) {
-                return;
+        async function joinQueue(peopleInQueue, totalWaitTime, serviceName) {
+            if (inQueue) return;
+
+            const serviceId = serviceNameMap[serviceName] || "1";
+            let position = peopleInQueue;
+            let remainingMinutes = totalWaitTime;
+
+            try {
+                const response = await fetch("/queue/join", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        serviceId: serviceId,
+                        userName: currentUserName
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    showNotification("Queue Error", data.error || "Unable to join queue");
+                    return;
+                }
+
+                position = data.position;
+                remainingMinutes = data.estimatedWaitTime;
+            } catch (err) {
+                console.error("Error joining queue:", err);
             }
 
-            const position = peopleInQueue;
-            let remainingMinutes = totalWaitTime;
-            const timePerPerson = totalWaitTime / peopleInQueue;
-            
+            const timePerPerson = remainingMinutes / Math.max(1, position);
             currentQueueName = serviceName;
+            currentServiceId = serviceId;
 
             inQueue = true;
             document.getElementById("leave-queue-btn").disabled = false;
@@ -218,12 +259,10 @@
             dashboardView.style.display = "block";
 
             document.querySelector('.status-info').innerHTML =
-            "<p>Position in queue: <strong>" + position + "</strong></p>" +
-            "<p>ETA time: <strong>" + totalWaitTime + " mins</strong></p>";
+                "<p>Position in queue: <strong>" + position + "</strong></p>" +
+                "<p>ETA time: <strong>" + remainingMinutes + " mins</strong></p>";
             
-            addUpdate(
-                "You just joined " + serviceName
-            );
+            addUpdate("You just joined " + serviceName);
 
             if (queueTimer) {
                 clearTimeout(queueTimer);
