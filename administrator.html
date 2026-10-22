@@ -303,6 +303,46 @@
         if (u) { getElement("serving").textContent = "Now serving: " + u; toast(`Serving ${u}`); }
         renderAll();
     });
+    getElement("cancel-btn").addEventListener("click", resetForm);
+
+    function renderAll() {
+        renderDashboard();
+        renderServices();
+        renderQueue();
+    }
+
+    // Load live services and queues from the backend API on startup
+    async function loadFromBackend() {
+        try {
+            const [svcRes, qRes] = await Promise.all([
+                fetch("/services"),
+                fetch("/queue")
+            ]);
+
+            if (svcRes.ok && qRes.ok) {
+                const backendServices = await svcRes.json();
+                const backendQueues = await qRes.json();
+
+                services = backendServices.map(s => ({
+                    id: Number(s.id) || s.id,
+                    name: s.name,
+                    desc: s.description,
+                    duration: s.expectedDuration,
+                    priority: (s.priorityLevel || "Medium").toLowerCase(),
+                    open: s.status !== "Closed",
+                    queue: backendQueues
+                        .filter(q => String(q.serviceId) === String(s.id))
+                        .map(q => q.userName)
+                }));
+            }
+        } catch (err) {
+            console.error("Using fallback UI data:", err);
+        }
+        renderAll();
+    }
+
+    renderAll();
+    loadFromBackend();
 
     // Check whether the logged-in user is an administrator
     async function checkAdminAccess() {
