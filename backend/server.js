@@ -3,8 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 
-// Import the administrator setup function
-const { createAdmin } = require("./data/users");
+// Import the administrator and non-administrator setup function
+const { createAdmin, createNonAdmin } = require("./data/users");
 
 // Import authentication and administrator authorization middleware
 const { authenticate, requireAdmin } = require("./middleware/auth");
@@ -76,6 +76,8 @@ app.get("/api/me", authenticate, (req, res) => {
 // Start the server after the administrator account is created
 async function startServer() {
     await createAdmin();
+    // added createNonAdmin()
+    await createNonAdmin();
 
     app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);

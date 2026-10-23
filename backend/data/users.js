@@ -18,6 +18,18 @@ async function createAdmin() {
         role: "admin"
     });
 }
+
+// Create a NON-ADMIN account
+async function createNonAdmin() {
+    const hashedPassword = await bcrypt.hash("User12345", 10);
+
+    users.push({
+        id: 2,
+        email: "user@queuesmart.com",
+        password: hashedPassword,
+        role: "user"
+    });
+}
 // Export the users array and administrator setup function
 // Other backend files can import and use them
-module.exports = { users, createAdmin };
+module.exports = { users, createAdmin, createNonAdmin };
