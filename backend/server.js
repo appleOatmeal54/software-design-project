@@ -11,9 +11,19 @@ const { authenticate, requireAdmin } = require("./middleware/auth");
 
 // Import registration and login routes
 const authRoutes = require("./routes/auth");
+const servicesRoutes = require("./routes/services");
+const queueRoutes = require("./routes/queue");
 
 const app = express();
 const PORT = 3000;
+
+// Allow Express to read JSON requests
+app.use(express.json());
+
+// Connect registration, login, services, and queue APIs
+app.use("/api", authRoutes);
+app.use("/services", servicesRoutes);
+app.use("/queue", queueRoutes);
 
 // Allow Express to read JSON requests
 app.use(express.json());

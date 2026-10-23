@@ -211,11 +211,14 @@
 
 .services-header h1 {
     margin-bottom: 0;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .subtitle {
     text-align: center;
-    margin: 10px 0 25px 0;
+    margin: 20px 0 25px 0;
     font-style: italic;
     color: #ddd;
 }
@@ -228,4 +231,15 @@
 
 .service-item p {
     margin-bottom: 5px;
+}
+
+.dashboard-wrapper {
+    position: relative;
+}
+
+#logout-btn {
+    position: absolute;
+    top: 80px;
+    left: 40px;
+    margin: 0;
 }
