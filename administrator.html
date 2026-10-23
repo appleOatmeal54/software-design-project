@@ -263,6 +263,7 @@
             <li>
                 <span class="pos">${i + 1}</span>
                 <span class="name">${esc(u)}</span>
+                <span class="wait-time" aria-label="Estimated wait time: ${estimateWaitTime(i + 1, s.duration)} minutes">${estimateWaitTime(i + 1, s.duration)} min</span>
                 <button class="action-btn ghost" ${i === 0 ? "disabled" : ""} onclick="move(${i}, -1)" aria-label="Move up"><i class='bx bx-up-arrow-alt'></i></button>
                 <button class="action-btn ghost" ${i === s.queue.length - 1 ? "disabled" : ""} onclick="move(${i}, 1)" aria-label="Move down"><i class='bx bx-down-arrow-alt'></i></button>
                 <button class="action-btn danger" onclick="removeUser(${i})">Remove</button>
@@ -277,6 +278,11 @@
         const q = current().queue;
         [q[i], q[i + dir]] = [q[i + dir], q[i]];
         renderAll();
+    }
+
+    // simple wait time estimation: position in queue * expected duration of specific service
+    function estimateWaitTime(position, duration) {
+        return position * duration;
     }
 
     async function removeUser(i) {

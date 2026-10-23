@@ -145,6 +145,8 @@
 
 .queue-list .pos { width: 28px; font-weight: 600; color: #3b82f6; }
 .queue-list .name { flex: 1; }
+/* shows wait time (ie: 30 minutes, 60 minutes...) left of the up arrow on queues tab */
+.queue-list .wait-time { min-width: 72px; color: #ddd; font-size: 14px; text-align: right; white-space: nowrap; }
 .queue-list li:first-child .name { font-weight: 600; }
 
 .empty { text-align: center; padding: 25px; font-style: italic; color: #ddd; }
