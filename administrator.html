@@ -126,15 +126,16 @@
         setTimeout(() => t.classList.remove("show"), 1800);
     }
 
-    // Navigation
+    // Navigation for tabs: viewing current tab, button should turn white
     function show(view) {
         document.querySelectorAll(".admin-view").forEach(v => v.classList.toggle("active", v.id === view));
-        // Only attach view-switching behavior to navigation buttons
         document.querySelectorAll(".admin-nav button[data-view]").forEach(b =>
-            b.addEventListener("click", () => show(b.dataset.view))
-    );
+            b.classList.toggle("active", b.dataset.view === view)
+        );
     }
-    document.querySelectorAll(".admin-nav button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
+    document.querySelectorAll(".admin-nav button[data-view]").forEach(b =>
+        b.addEventListener("click", () => show(b.dataset.view))
+    );
 
     // Dashboard
     function renderDashboard() {
