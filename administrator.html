@@ -288,15 +288,39 @@
 
     async function removeUser(i) {
         const svc = current();
+        if (!svc || !svc.queue[i]) return;
+
         const userName = svc.queue[i];
-        await fetch("/queue/leave", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ serviceId: svc.id, userName })
-        });
-        const [u] = svc.queue.splice(i, 1);
-        toast(`${u} removed from queue`);
-        renderAll();
+
+        try {
+            const response = await fetch("/queue/leave", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    serviceId: svc.id,
+                    userName: userName,
+                    action: "remove"
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast(data.error || "Could not remove user from queue.");
+                return;
+            }
+
+            svc.queue.splice(i, 1);
+
+            toast(`${userName} removed from queue`);
+            renderAll();
+
+        } catch (error) {
+            console.error("Error removing user:", error);
+            toast("Network error. Could not remove user.");
+        }
     }
 
     getElement("serve-btn").addEventListener("click", async () => {
@@ -350,6 +374,11 @@
 
     renderAll();
     loadFromBackend();
+
+    // Refresh the dashboard every second
+    setInterval(() => {
+        loadFromBackend();
+    }, 1000);
 
     // Check whether the logged-in user is an administrator
     async function checkAdminAccess() {

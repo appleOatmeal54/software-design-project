@@ -147,6 +147,15 @@
 
 /* History Table */
 
+.history-card {
+    grid-column: span 2;
+}
+
+.history-card {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
 .history-table {
     width: 100%;
     border-collapse: collapse;
@@ -158,6 +167,10 @@
     text-align: left;
     padding: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.history-table th {
+    background: #263449;
 }
 
 /* Dashboard Buttons */
@@ -242,4 +255,18 @@
     top: 80px;
     left: 40px;
     margin: 0;
+}
+
+.sound-toggle {
+    position: absolute;
+    top: 80px;
+    right: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+#show-dashboard {
+    transform: translateY(50px);
 }

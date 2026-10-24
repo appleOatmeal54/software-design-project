@@ -9,10 +9,12 @@ const { createAdmin, createNonAdmin } = require("./data/users");
 // Import authentication and administrator authorization middleware
 const { authenticate, requireAdmin } = require("./middleware/auth");
 
-// Import registration and login routes
+// Import registration, login, and notification routes
 const authRoutes = require("./routes/auth");
 const servicesRoutes = require("./routes/services");
 const queueRoutes = require("./routes/queue");
+const notificationRoutes = require("./routes/notifications");
+const historyRoutes = require("./routes/history");
 
 const app = express();
 const PORT = 3000;
@@ -20,10 +22,12 @@ const PORT = 3000;
 // Allow Express to read JSON requests
 app.use(express.json());
 
-// Connect registration, login, services, and queue APIs
+// Connect registration, login, services, queue, and notification APIs
 app.use("/api", authRoutes);
 app.use("/services", servicesRoutes);
 app.use("/queue", queueRoutes);
+app.use("/notifications", notificationRoutes);
+app.use("/history", historyRoutes);
 
 // Allow Express to read JSON requests
 app.use(express.json());

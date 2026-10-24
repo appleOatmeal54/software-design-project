@@ -31,8 +31,16 @@
         <div class="dashboard-wrapper" id="dashboard-view">
             
             <h1>Queue<span>Smart</span> User Dashboard</h1>
-            <button type="button" class="btn" id="logout-btn">Logout</button>
-            
+
+            <button type="button" class="btn" id="logout-btn">
+                Logout
+            </button>
+
+            <label class="sound-toggle">
+                <input type="checkbox" id="mute-sound-checkbox">
+                Mute Sound
+            </label>
+
             <div class="dashboard-grid">
                 <!-- Queue Status Card -->
                 <div class="glass-card status-card">
@@ -71,21 +79,18 @@
                 <div class="glass-card history-card">
                     <h3>History</h3>
                     <table class="history-table">
-                        <tr>
-                            <th>Date</th>
-                            <th>Service Name</th>
-                            <th>Outcome</th>
-                        </tr>
-                        <tr>
-                            <td>09/26/2026</td>
-                            <td>Financial Aid Support</td>
-                            <td>Served</td>
-                        </tr>
-                        <tr>
-                            <td>09/20/2026</td>
-                            <td>Academic Advising</td>
-                            <td>Left Queue</td>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Service</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr>
+                                <td colspan="3">Loading history...</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
 
@@ -157,13 +162,19 @@
         let notificationTimer = null;
         let currentQueueName = "";
         let inQueue = false;
+        let queueRefreshTimer = null;
+        let notificationRefreshTimer = null;
+        let knownNotificationIds = new Set();
+        let notificationsInitialized = false;
         const notifySound = new Audio("notification.mp3");
+        const muteSoundCheckbox = document.getElementById("mute-sound-checkbox");
 
         // Toggle to Services View
-        showServicesBtn.addEventListener("click", function(event) {
+        showServicesBtn.addEventListener("click", async function(event) {
             event.preventDefault();
             dashboardView.style.display = "none";
             servicesView.style.display = "block";
+            await refreshServicesPage();
         });
 
         // Toggle back to Dashboard
@@ -175,6 +186,8 @@
 
         let currentServiceId = null;
         let currentUserName = sessionStorage.getItem("userEmail") || "Student User";
+        let previousQueuePosition = null;
+        let isRefreshingQueue = false;
 
         // Map service names to IDs for the existing HTML buttons
         const serviceNameMap = {
@@ -184,42 +197,180 @@
             "Registrar & Records": "4",
             "Veteran Services": "5"
         };
+        
+        async function restoreExistingQueue() {
+            const token = sessionStorage.getItem("token");
+
+            if (!token) return;
+
+            try {
+                const servicesResponse = await fetch("/services");
+
+                if (!servicesResponse.ok) {
+                    throw new Error("Unable to load services.");
+                }
+
+                const services = await servicesResponse.json();
+
+                // Check each service for an existing queue entry
+                for (const service of services) {
+                    const response = await fetch(`/queue/${service.id}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+
+                    if (!response.ok) continue;
+
+                    const queueData = await response.json();
+
+                    const position = queueData.queue.findIndex(
+                        entry =>
+                            entry.userName.trim().toLowerCase() ===
+                            currentUserName.trim().toLowerCase()
+                    );
+
+                    // Restore the queue if the current user is found
+                    if (position !== -1) {
+                        currentServiceId = String(service.id);
+                        currentQueueName = service.name;
+                        inQueue = true;
+
+                        const currentPosition = position + 1;
+                        const duration =
+                            Number(service.expectedDuration) || 0;
+                        const estimatedWait = currentPosition * duration;
+
+                        previousQueuePosition = currentPosition;
+
+                        document.querySelector(".status-info").innerHTML =
+                            "<p>Position in queue: <strong>" +
+                            currentPosition +
+                            "</strong></p>" +
+                            "<p>ETA time: <strong>" +
+                            estimatedWait +
+                            " mins</strong></p>";
+
+                        document.getElementById("leave-queue-btn").disabled =
+                            false;
+
+                        // The user is already in a queue, so stop searching
+                        return;
+                    }
+                }
+
+            } catch (error) {
+                console.error("Unable to restore queue:", error);
+            }
+        }
+
+        async function refreshServicesPage() {
+            try {
+                const response = await fetch("/services");
+
+                if (!response.ok) {
+                    throw new Error("Unable to load services.");
+                }
+
+                const services = await response.json();
+                const serviceCards = document.querySelectorAll(".service-item");
+
+                for (const card of serviceCards) {
+                    const title = card.querySelector("h3");
+                    const service = services.find(
+                        item => item.name === title.textContent.trim()
+                    );
+
+                    if (!service) continue;
+
+                    const queueResponse = await fetch(
+                        `/queue/${service.id}`
+                    );
+
+                    if (!queueResponse.ok) continue;
+
+                    const queueData = await queueResponse.json();
+                    const duration = Number(service.expectedDuration) || 0;
+                    const count = queueData.count;
+
+                    // Update the displayed service information
+                    const paragraphs = card.querySelectorAll("p");
+
+                    paragraphs[0].textContent =
+                        `Average wait time: ${count * duration}m`;
+
+                    paragraphs[1].textContent =
+                        `Current People in Q: ${count}`;
+
+                    // Prevent joining closed queues
+                    const joinButton = card.querySelector(".join-btn");
+                    const isClosed = service.status === "Closed";
+
+                    joinButton.disabled = isClosed;
+                    joinButton.textContent = isClosed
+                        ? "Queue Closed"
+                        : "Join Queue";
+                }
+            } catch (error) {
+                console.error("Unable to refresh services page:", error);
+            }
+        }
 
         async function leaveQueue() {
             if (!inQueue) return;
 
+            const token = sessionStorage.getItem("token");
+
             try {
-                await fetch("/queue/leave", {
+                const response = await fetch("/queue/leave", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
                     body: JSON.stringify({
                         serviceId: currentServiceId,
                         userName: currentUserName
                     })
                 });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showNotification("Error", data.error || "Unable to leave queue.");
+                    return;
+                }
+
+                if (queueTimer) {
+                    clearTimeout(queueTimer);
+                    queueTimer = null;
+                }
+
+                inQueue = false;
+                previousQueuePosition = null;
+
+                document.getElementById("leave-queue-btn").disabled = true;
+
+                document.querySelector(".status-info").innerHTML =
+                    "<p>Position in queue: <strong>--</strong></p>" +
+                    "<p>ETA time: <strong>--</strong></p>";
+
+                currentQueueName = "";
+                currentServiceId = null;
+
+                await loadNotifications();
+
             } catch (err) {
                 console.error("Error leaving queue:", err);
+                showNotification("Error", "Unable to leave queue. Please try again.");
             }
-
-            if (queueTimer) {
-                clearTimeout(queueTimer);
-                queueTimer = null;
-            }
-
-            inQueue = false;
-            document.getElementById("leave-queue-btn").disabled = true;
-
-            document.querySelector('.status-info').innerHTML = 
-                "<p>Position in queue: <strong>--</strong></p>" + 
-                "<p>ETA time: <strong>--</strong></p>";
-
-            addUpdate("You left " + currentQueueName);
-            currentQueueName = "";
-            currentServiceId = null;
         }
 
         async function joinQueue(peopleInQueue, totalWaitTime, serviceName) {
-            if (inQueue) return;
+            if (inQueue) {
+                showNotification("Queue Error", "You are already in a queue");
+                return;
+            }
 
             const serviceId = serviceNameMap[serviceName] || "1";
             let position = peopleInQueue;
@@ -236,12 +387,24 @@
                 });
 
                 const data = await response.json();
+
                 if (!response.ok) {
-                    showNotification("Queue Error", data.error || "Unable to join queue");
+                    if (data.error === "You are already in a queue.") {
+                        showNotification(
+                            "Queue Error",
+                            "You are already in a queue"
+                        );
+                        return;
+                    }
+
+                    showNotification(
+                        "Queue Error",
+                        data.error || "Unable to join queue"
+                    );
                     return;
                 }
-
                 position = data.position;
+                previousQueuePosition = position;
                 remainingMinutes = data.estimatedWaitTime;
             } catch (err) {
                 console.error("Error joining queue:", err);
@@ -261,58 +424,143 @@
                 "<p>Position in queue: <strong>" + position + "</strong></p>" +
                 "<p>ETA time: <strong>" + remainingMinutes + " mins</strong></p>";
             
-            addUpdate("You just joined " + serviceName);
+            await loadNotifications();
 
             if (queueTimer) {
                 clearTimeout(queueTimer);
             }
-
-            startQueueSimulation(position, remainingMinutes, timePerPerson);
         }
         
-        // In real time, the Queue Status is updated, a message is added to Updates, and 
-        // a notification is created every time the user moves ahead in the queue
-        function startQueueSimulation(position, remainingMinutes, timePerPerson) {
-            queueTimer = setTimeout(function updateQueue() {
-                position--;
-                remainingMinutes -= timePerPerson;
+        async function refreshQueueStatus() {
+            if (!inQueue || !currentServiceId) return;
 
-                if (position > 0) {
+            isRefreshingQueue = true;
 
-                    document.querySelector('.status-info').innerHTML = 
-                        "<p>Position in queue: <strong>" + position + "</strong></p>" +
-                        "<p>ETA time: <strong>" + Math.max(0, Math.round(remainingMinutes)) + " mins</strong></p>";
-                    
-                    showNotification(
-                        "Queue Update",
-                        "You are now " + getPositionText(position) + " in line"  
-                    );
+            const token = sessionStorage.getItem("token");
 
-                    addUpdate(
-                        "You are now " + getPositionText(position) + " in line"
-                    );
-                    
-                    startQueueSimulation(position, remainingMinutes, timePerPerson);
-                } else {
+            try {
+                // Fetch the latest, sorted queue from the backend
+                const response = await fetch(
+                    `/queue/${currentServiceId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    }
+                );
 
-                    remainingMinutes = 0;
-
-                    document.querySelector('.status-info').innerHTML =
-                        "<p>Position in queue: <strong>0</strong></p>" +
-                        "<p>ETA time: <strong>0 mins</strong></p>";
-
-                    showNotification(
-                        "Queue Update",
-                        "Your service is now ready!"
-                    );
-
-                    addUpdate(
-                        "Your service is now ready!"
-                    );
+                if (!response.ok) {
+                    throw new Error("Unable to refresh queue.");
                 }
-            }, timePerPerson * 1000);
-        }
 
+                const data = await response.json();
+
+                // Find the current user in the updated queue
+                const position = data.queue.findIndex(
+                    entry =>
+                        entry.userName.trim().toLowerCase() ===
+                        currentUserName.trim().toLowerCase()
+                );
+
+                // The user may have been served or removed by an admin
+                if (position === -1) {
+                    const endedServiceName = currentQueueName;
+                    const endedServiceId = String(currentServiceId);
+                    const token = sessionStorage.getItem("token");
+
+                    inQueue = false;
+                    previousQueuePosition = null;
+                    currentServiceId = null;
+                    currentQueueName = "";
+
+                    document.getElementById("leave-queue-btn").disabled = true;
+
+                    // Find the reason in backend notification data
+                    let eventType = null;
+
+                    try {
+                        const response = await fetch("/notifications", {
+                            headers: {
+                                Authorization: `Bearer ${token}`
+                            }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+
+                            const matchingNotification = data.notifications
+                                .filter(notification =>
+                                    String(notification.serviceId) === endedServiceId &&
+                                    ["served", "admin_removed"].includes(notification.type)
+                                )
+                                .sort((a, b) =>
+                                    new Date(b.createdAt) - new Date(a.createdAt)
+                                )[0];
+
+                            if (matchingNotification) {
+                                eventType = matchingNotification.type;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Could not determine queue end reason:", error);
+                    }
+
+                    // Update the interface only. Notifications come from the backend.
+                    if (eventType === "admin_removed") {
+                        document.querySelector(".status-info").innerHTML =
+                            "<p>You have been</p>";
+                    } else if (eventType === "served") {
+                        document.querySelector(".status-info").innerHTML =
+                            "<p>You have been served!</p>";
+                    } else {
+                        document.querySelector(".status-info").innerHTML =
+                            "<p>Your queue session has ended.</p>";
+                    }
+
+                    // Display backend notifications and populate Updates.
+                    // Do not call showNotification() or addUpdate() here.
+                    await loadNotifications();
+
+                    return;
+                }
+
+                // Get the service's expected duration
+                const servicesResponse = await fetch("/services");
+
+                if (!servicesResponse.ok) {
+                    throw new Error("Unable to load service information.");
+                }
+
+                const services = await servicesResponse.json();
+
+                const service = services.find(
+                    item => String(item.id) === String(currentServiceId)
+                );
+
+                const currentPosition = position + 1;
+                const duration = Number(service?.expectedDuration) || 0;
+                const estimatedWait = currentPosition * duration;
+
+                // Track the current position.
+                // Position notifications are created by the backend.
+                previousQueuePosition = currentPosition;    
+
+                // Update the displayed position and estimated wait
+                document.querySelector(".status-info").innerHTML =
+                    "<p>Position in queue: <strong>" +
+                    currentPosition +
+                    "</strong></p>" +
+                    "<p>ETA time: <strong>" +
+                    estimatedWait +
+                    " mins</strong></p>";
+
+            } catch (error) {
+                console.error("Queue refresh failed:", error);
+            } finally {
+                isRefreshingQueue = false;
+            }
+        }
+        
         // Shows a notification whenever the user moves ahead in the queue
         function showNotification(title, message) {
             const popup = document.getElementById("notification-popup");
@@ -324,8 +572,13 @@
 
             popup.classList.add("show");
 
-            notifySound.currentTime = 0;
-            notifySound.play();
+            if (!muteSoundCheckbox.checked) {
+                notifySound.currentTime = 0;
+
+                notifySound.play().catch(error => {
+                    console.warn("Notification sound could not play:", error);
+                });
+            }
 
             setTimeout(function() {
                 popup.classList.remove("show");
@@ -341,32 +594,172 @@
                 "<i class='bx bx-log-in-circle'></i>" +
                 message;
 
-            notificationList.append(update);
+            notificationList.prepend(update);
         }
         
-        // Translates the position number into its english equivalent
-        function getPositionText(position) {
-            const positions = {
-                1: "first",
-                2: "second",
-                3: "third",
-                4: "fourth",
-                5: "fifth",
-                6: "sixth",
-                7: "seventh",
-                8: "eighth",
-                9: "ninth",
-                10: "tenth"
-            };
-            return positions[position] || position + "th";
+        async function loadNotifications() {
+            const token = sessionStorage.getItem("token");
+
+            if (!token) return;
+
+            try {
+                const response = await fetch("/notifications", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to load notifications.");
+                }
+
+                const data = await response.json();
+                const notificationList =
+                    document.getElementById("notification-list");
+
+                data.notifications.forEach(notification => {
+                    // Add only notifications that are not already displayed
+                    if (!knownNotificationIds.has(notification.id)) {
+                        addUpdate(notification.message);
+
+                        // Show popups only after the initial load
+                        if (notificationsInitialized) {
+                            showNotification(
+                                notification.title,
+                                notification.message
+                            );
+                        }
+
+                        knownNotificationIds.add(notification.id);
+                    }
+                });
+
+                notificationsInitialized = true;
+
+            } catch (error) {
+                console.error("Error loading notifications:", error);
+            }
+        }
+        
+        async function loadHistory() {
+            const token = sessionStorage.getItem("token");
+            const tableBody = document.getElementById("history-table-body");
+
+            if (!token) return;
+
+            try {
+                const response = await fetch("/history", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Unable to load history.");
+                }
+
+                const data = await response.json();
+                tableBody.innerHTML = "";
+
+                if (data.history.length === 0) {
+                    const row = tableBody.insertRow();
+                    const cell = row.insertCell();
+                    cell.colSpan = 3;
+                    cell.textContent = "";
+                    return;
+                }
+
+                data.history.forEach(record => {
+                    const row = tableBody.insertRow();
+
+                    row.insertCell().textContent =
+                        new Date(record.date).toLocaleString([], {
+                            year: "numeric",
+                            month: "numeric",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit"
+                        });
+
+
+                    row.insertCell().textContent = record.serviceName;
+                    row.insertCell().textContent = record.outcome;
+                });
+            } catch (error) {
+                console.error("Error loading history:", error);
+
+                tableBody.innerHTML =
+                    "<tr><td colspan='3'>Unable to load history.</td></tr>";
+            }
         }
 
-        // Clears the Update section of all messages
-        function clearUpdates() {
-            const notificationList = document.getElementById("notification-list");
-            notificationList.innerHTML = "";
+        function startDashboardRefresh() {
+            // Prevent duplicate refresh intervals
+            if (queueRefreshTimer) {
+                clearInterval(queueRefreshTimer);
+            }
+
+            if (notificationRefreshTimer) {
+                clearInterval(notificationRefreshTimer);
+            }
+
+            // Refresh the queue every second
+            queueRefreshTimer = setInterval(() => {
+                refreshQueueStatus();
+            }, 1000);
+
+            // Refresh notifications every second
+            notificationRefreshTimer = setInterval(() => {
+                loadNotifications();
+            }, 1000);
+
+            // Refresh history every second
+            setInterval(() => {
+                loadHistory();
+            }, 1000);
+
+            // Refresh service cards every second
+            setInterval(() => {
+                if (servicesView.style.display !== "none") {
+                    refreshServicesPage();
+                }
+            }, 1000);
         }
 
+        async function clearUpdates() {
+            const token = sessionStorage.getItem("token");
+
+            if (!token) {
+                showNotification("Error", "Please log in again.");
+                return;
+            }
+
+            try {
+                const response = await fetch("/notifications", {
+                    method: "DELETE",
+                    headers:{
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showNotification(
+                        "Error",
+                        data.error || "Unable to clear notifications."
+                    );
+                    return;
+                }   
+
+                document.getElementById("notification-list").innerHTML = "";
+                knownNotificationIds.clear();
+
+            } catch (error) {
+                console.error("Error clearing notifications:", error);
+                showNotification("Error", "Unable to clear notifications.");
+            }
+        }
 
     // Check whether the user is logged in
     async function checkUserAccess() {
@@ -397,6 +790,7 @@
 
             // Retrieve the authenticated user's information
             const data = await response.json();
+            currentUserName = data.user.email;
 
             // Redirect administrators to their own dashboard
             if (data.user.role === "admin") {
@@ -418,7 +812,19 @@
     }
 
     // Verify the user's authentication when the page loads
-    checkUserAccess();
+    checkUserAccess().then(async () => {
+        if (
+            sessionStorage.getItem("token") &&
+            currentUserName !== "Student User"
+        ) {
+            // Restore queue state before starting dashboard refreshes
+            await restoreExistingQueue();
+
+            loadNotifications();
+            loadHistory();
+            startDashboardRefresh();
+        }
+    });
 
     // Log out the user when the Logout button is clicked
     document.getElementById("logout-btn").addEventListener("click", function() {
