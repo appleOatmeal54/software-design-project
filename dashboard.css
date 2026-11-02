@@ -250,10 +250,16 @@
     position: relative;
 }
 
-#logout-btn {
+.account-actions {
     position: absolute;
     top: 80px;
     left: 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#logout-btn {
     margin: 0;
 }
 
@@ -269,4 +275,49 @@
 
 #show-dashboard {
     transform: translateY(50px);
+}
+
+.account-actions .bx-cog {
+    font-size: 22px;
+}
+
+#dashboard-view .account-actions .btn {
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Account Settings */
+
+#profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+#profile-form label {
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+#profile-form input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    box-sizing: border-box;
+}
+
+#profile-form input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#profile-form button {
+    align-self: flex-start;
+    margin-top: 20px;
 }

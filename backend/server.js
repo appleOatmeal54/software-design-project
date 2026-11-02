@@ -15,7 +15,7 @@ const servicesRoutes = require("./routes/services");
 const queueRoutes = require("./routes/queue");
 const notificationRoutes = require("./routes/notifications");
 const historyRoutes = require("./routes/history");
-
+const profileRoutes = require("./routes/profile");
 const app = express();
 const PORT = 3000;
 
@@ -24,16 +24,12 @@ app.use(express.json());
 
 // Connect registration, login, services, queue, and notification APIs
 app.use("/api", authRoutes);
+app.use("/api/profile", profileRoutes);
 app.use("/services", servicesRoutes);
 app.use("/queue", queueRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/history", historyRoutes);
 
-// Allow Express to read JSON requests
-app.use(express.json());
-
-// Connect registration and login APIs
-app.use("/api", authRoutes);
 
 const JWT_SECRET = process.env.JWT_SECRET;
 

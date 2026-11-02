@@ -1,35 +1,73 @@
 
 const bcrypt = require("bcrypt");
-
-// Store registered users in memory instead of a database
-const users = [];
+const db = require("../database");
 
 // Create a test administrator account when the server starts
 async function createAdmin() {
+    const email = "admin@queuesmart.com";
 
-    // Hash the administrator's password before storing it
-    const hashedPassword = await bcrypt.hash("Admin12345", 10);
+        // Check if the administrator already exists
+        const existingAdmin = db.prepare(
+            "SELECT user_id FROM UserCredentials WHERE email = ?"
+        ).get(email);
 
-    // Add the administrator to our users array
-    users.push({
-        id: 1,
-        email: "admin@queuesmart.com",
-        password: hashedPassword,
-        role: "admin"
-    });
-}
+        if (existingAdmin) {
+            return;
+        }
+
+        // Hash the administrator password
+        const hashedPassword = await bcrypt.hash("Admin12345", 10);
+
+        // Insert administrator credentials and profile
+        const insertAdmin = db.transaction(() => {
+
+            const result = db.prepare(`
+                INSERT INTO UserCredentials (email, password_hash, role)
+                VALUES (?, ?, ?)
+            `).run(email, hashedPassword, "admin");
+
+            db.prepare(`
+                INSERT INTO UserProfile (user_id, full_name, email)
+                VALUES (?, ?, ?)
+            `).run(Number(result.lastInsertRowid), "Administrator", email);
+        });
+
+        insertAdmin();
+    }
+
 
 // Create a NON-ADMIN account
 async function createNonAdmin() {
-    const hashedPassword = await bcrypt.hash("User12345", 10);
+    const email = "user@queuesmart.com";
 
-    users.push({
-        id: 2,
-        email: "user@queuesmart.com",
-        password: hashedPassword,
-        role: "user"
-    });
-}
+        // Check if the user already exists
+        const existingUser = db.prepare(
+            "SELECT user_id FROM UserCredentials WHERE email = ?"
+        ).get(email);
+
+        if (existingUser) {
+            return;
+        }
+
+        // Hash the test user's password
+        const hashedPassword = await bcrypt.hash("User12345", 10);
+
+        // Insert user credentials and profile
+        const insertUser = db.transaction(() => {
+
+            const result = db.prepare(`
+                INSERT INTO UserCredentials (email, password_hash, role)
+                VALUES (?, ?, ?)
+            `).run(email, hashedPassword, "user");
+
+            db.prepare(`
+                INSERT INTO UserProfile (user_id, full_name, email)
+                VALUES (?, ?, ?)
+            `).run(Number(result.lastInsertRowid), "Test User", email);
+        });
+
+        insertUser();
+    }
 // Export the users array and administrator setup function
 // Other backend files can import and use them
-module.exports = { users, createAdmin, createNonAdmin };
+module.exports = { createAdmin, createNonAdmin };

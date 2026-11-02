@@ -5,8 +5,9 @@ const jwt = require("jsonwebtoken");
 // Create an Express router for authentication endpoints
 const router = express.Router();
 
-// Import the shared users array
-const { users } = require("../data/users");
+
+// Import the SQLite database connection
+const db = require("../database");
 
 // Retrieve the secret key used to generate authentication tokens
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -15,20 +16,27 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // Registration API
 router.post("/register", async (req, res) => {
 
-    const { email, password } = req.body;
+    const { full_name, email, password } = req.body;
 
     // Email and password must be strings
-    if (typeof email !== "string" || typeof password !== "string") {
+    if (typeof full_name !== "string" || typeof email !== "string" || typeof password !== "string") {
         return res.status(400).json({
-            message: "Email and password must be provided as strings"
+            message: "Full name, email and password are required"
         });
     }
 
     // Make sure neither field is empty
-    if (!email.trim() || !password) {
+    if (!full_name.trim() || !email.trim() || !password) {
         return res.status(400).json({
-            message: "Email and password are required"
+            message: "Full name, email and password are required"
         });
+    }
+
+    //Require full name to be less than 100 characters
+    if (full_name.trim().length > 100) {
+        return res.status(400).json({
+            message: "Full name must be less than 100 characters"
+        })
     }
 
     // Check email format and length
@@ -45,10 +53,13 @@ router.post("/register", async (req, res) => {
         });
     }
 
-    // Prevent duplicate email registration
-    const existingUser = users.find(
-        user => user.email.toLowerCase() === email.trim().toLowerCase()
-    );
+    // Normalize the email
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check whether the email is already registered
+    const existingUser = db.prepare(
+        "SELECT user_id FROM UserCredentials WHERE email = ?"
+    ).get(normalizedEmail);
 
     if (existingUser) {
         return res.status(409).json({
@@ -59,27 +70,51 @@ router.post("/register", async (req, res) => {
     // Hash the password before storing it
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create a new regular user account
-    const newUser = {
-        id: users.length + 1,
-        email: email.trim().toLowerCase(),
-        password: hashedPassword,
-        role: "user"
-    };
+    // Insert both records in one transaction
+        const registerUser = db.transaction(() => {
 
-    // Store the account in memory
-    users.push(newUser);
+            const result = db.prepare(`
+                INSERT INTO UserCredentials (email, password_hash, role)
+                VALUES (?, ?, ?)
+            `).run(normalizedEmail, hashedPassword, "user");
 
-    // Return user information without exposing the password
-    res.status(201).json({
-        message: "User registered successfully",
-        user: {
-            id: newUser.id,
-            email: newUser.email,
-            role: newUser.role
+            const userId = Number(result.lastInsertRowid);
+
+            db.prepare(`
+                INSERT INTO UserProfile (user_id, full_name, email)
+                VALUES (?, ?, ?)
+            `).run(userId, full_name.trim(), normalizedEmail);
+
+            return userId;
+        });
+
+        try {
+            const userId = registerUser();
+
+            res.status(201).json({
+                message: "User registered successfully",
+                user: {
+                    id: userId,
+                    full_name: full_name.trim(),
+                    email: normalizedEmail,
+                    role: "user"
+                }
+            });
+
+        } catch (error) {
+            if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+                return res.status(409).json({
+                    message: "Email is already registered"
+                });
+            }
+
+            console.error("Registration error:", error);
+
+            res.status(500).json({
+                message: "Unable to register user"
+            });
         }
     });
-});
 
 
 // Login API
@@ -95,9 +130,11 @@ router.post("/login", async (req, res) => {
     }
 
     // Find the account associated with the email
-    const user = users.find(
-        user => user.email === email.trim().toLowerCase()
-    );
+    const user = db.prepare(`
+        SELECT user_id, email, password_hash, role
+        FROM UserCredentials
+        WHERE email = ?
+        `).get(email.trim().toLowerCase());
 
     // Reject nonexistent accounts
     if (!user) {
@@ -107,7 +144,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Compare the entered password with the stored hashed password
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
         return res.status(401).json({
@@ -117,7 +154,7 @@ router.post("/login", async (req, res) => {
 
     // Generate a JWT valid for one hour
     const token = jwt.sign(
-        { id: user.id },
+        { id: user.user_id },
         JWT_SECRET,
         { expiresIn: "1h" }
     );
@@ -127,7 +164,7 @@ router.post("/login", async (req, res) => {
         message: "Login successful",
         token: token,
         user: {
-            id: user.id,
+            id: user.user_id,
             email: user.email,
             role: user.role
         }

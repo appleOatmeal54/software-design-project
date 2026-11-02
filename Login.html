@@ -83,6 +83,11 @@
                 <h1>Register</h1>
 
                 <div class="input-box">
+                    <input type="text" id="register-name" name="full_name" placeholder="Full Name" autocomplete="name" maxlength="100" required>
+                    <i class="bx bxs-user"></i>
+                </div>                
+
+                <div class="input-box">
                     <input type="email" id="register-email" name="email" placeholder="Email" autocomplete="email" maxlength="254" required>
                     <i class="bx bxs-user"></i>
                 </div>
@@ -138,8 +143,9 @@
                 return;
             }
 
-            // Get the email entered in the registration form
-            const email = document.getElementById("register-email").value;
+            // Get the name and email entered in the registration form
+            const fullName = document.getElementById("register-name").value.trim();
+            const email = document.getElementById("register-email").value.trim();
 
             try {
                 // Send the registration information to our backend API
@@ -149,6 +155,7 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
+                        full_name: fullName,
                         email: email,
                         password: password
                     })

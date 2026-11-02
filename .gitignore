@@ -6,3 +6,11 @@ backend/.env
 
 # Ignore generated test coverage reports
 backend/coverage/
+
+# Ignore SQLite database files
+backend/queuesmart.db
+backend/queuesmart.db-wal
+backend/queuesmart.db-shm
+
+# Ignore Node.js packages anywhere in the project
+node_modules/

@@ -1,8 +1,8 @@
 
 const jwt = require("jsonwebtoken");
 
-// Import the shared users array
-const { users } = require("../data/users");
+// Import the SQLite database
+const db = require("../database");
 
 // Retrieve the secret key used to verify JWTs
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -27,8 +27,12 @@ function authenticate(req, res, next) {
         // Verify the token using our secret key
         const decoded = jwt.verify(token, JWT_SECRET);
 
-        // Find the user associated with the token
-        const user = users.find(u => u.id === decoded.id);
+        // Find the user associated with the token in SQLite
+        const user = db.prepare(`
+            SELECT user_id AS id, email, role
+            FROM UserCredentials
+            WHERE user_id = ?
+        `).get(decoded.id);
 
         // Reject the request if the user no longer exists
         if (!user) {
