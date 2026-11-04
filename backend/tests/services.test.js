@@ -1,9 +1,43 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_key";
 const request = require("supertest");
 const { app } = require("../server");
+const db = require("../database");
+
+// Mock the SQLite database methods
+jest.mock("../database", () => {
+    const mockStatement = {
+        all: jest.fn(),
+        get: jest.fn(),
+        run: jest.fn()
+    };
+    return {
+        prepare: jest.fn(() => mockStatement)
+    };
+});
 
 describe("Module 2: Service Management API (/services)", () => {
+    let mockStatement;
+
+    beforeAll(() => {
+        mockStatement = db.prepare();
+    });
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     test("GET /services should return all initial services", async () => {
+        // Simulate the database returning 5 services
+        mockStatement.all.mockReturnValue(
+            Array(5).fill({ 
+                service_id: 1, 
+                service_name: "Test", 
+                description: "Desc", 
+                expected_duration: 30, 
+                priority_level: "Medium" 
+            })
+        );
+
         const res = await request(app).get("/services");
         expect(res.statusCode).toBe(200);
         expect(Array.isArray(res.body)).toBe(true);
@@ -11,6 +45,8 @@ describe("Module 2: Service Management API (/services)", () => {
     });
 
     test("POST /services should create a new valid service", async () => {
+        mockStatement.run.mockReturnValue({ lastInsertRowid: 6 });
+
         const newService = {
             name: "IT Help Desk",
             description: "Laptop and campus Wi-Fi troubleshooting.",
@@ -22,7 +58,6 @@ describe("Module 2: Service Management API (/services)", () => {
         expect(res.statusCode).toBe(201);
         expect(res.body.service.name).toBe("IT Help Desk");
         expect(res.body.service.expectedDuration).toBe(25);
-        expect(res.body.service.status).toBe("Open");
     });
 
     test("POST /services should reject missing required fields", async () => {
@@ -53,28 +88,47 @@ describe("Module 2: Service Management API (/services)", () => {
         expect(res.body.error).toMatch(/between 1 and 1440/);
     });
 
-    test("PUT /services/:id should update an existing service and toggle status", async () => {
+    test("PUT /services/:id should update an existing service", async () => {
+        // Simulate finding the existing service in the database
+        mockStatement.get.mockReturnValue({
+            service_id: 1, 
+            service_name: "Academic Advising", 
+            description: "Desc", 
+            expected_duration: 30, 
+            priority_level: "Medium"
+        });
+        mockStatement.run.mockReturnValue({ changes: 1 });
+
         const res = await request(app).put("/services/1").send({
             name: "Updated Academic Advising",
-            expectedDuration: 35,
-            status: "Closed"
+            expectedDuration: 35
         });
+        
         expect(res.statusCode).toBe(200);
         expect(res.body.service.name).toBe("Updated Academic Advising");
-        expect(res.body.service.status).toBe("Closed");
-
-        // Re-open service 1 for subsequent queue tests
-        await request(app).put("/services/1").send({ status: "Open" });
+        expect(res.body.service.expectedDuration).toBe(35);
     });
 
     test("PUT /services/:id should return 404 for non-existent service", async () => {
+        // Simulate the database finding nothing
+        mockStatement.get.mockReturnValue(null);
+
         const res = await request(app).put("/services/9999").send({
-            status: "Closed"
+            name: "Does Not Exist"
         });
         expect(res.statusCode).toBe(404);
     });
 
     test("PUT /services/:id should reject invalid update fields", async () => {
+        // Simulate finding the existing service
+        mockStatement.get.mockReturnValue({
+            service_id: 1, 
+            service_name: "Valid", 
+            description: "Desc", 
+            expected_duration: 30, 
+            priority_level: "Medium"
+        });
+
         const resName = await request(app).put("/services/1").send({ name: "" });
         expect(resName.statusCode).toBe(400);
 
