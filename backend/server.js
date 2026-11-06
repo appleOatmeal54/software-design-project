@@ -9,6 +9,9 @@ const { createAdmin, createNonAdmin } = require("./data/users");
 // Import authentication and administrator authorization middleware
 const { authenticate, requireAdmin } = require("./middleware/auth");
 
+// Imports the queue setup function that creates a queue for every service 11/06/2026
+const { ensureQueuesForServices } = require("./data/queueData");
+
 // Import registration, login, and notification routes
 const authRoutes = require("./routes/auth");
 const servicesRoutes = require("./routes/services");
@@ -78,6 +81,9 @@ async function startServer() {
     await createAdmin();
     // added createNonAdmin()
     await createNonAdmin();
+
+    // Creates a queue for each service that does not have one yet
+    ensureQueuesForServices();
 
     app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
