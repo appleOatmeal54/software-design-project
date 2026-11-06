@@ -37,9 +37,9 @@
                 Logout
             </button>
 
-            <a href="/profile.html" class="btn settings-btn">
+            <button type="button" class="btn settings-btn" id="account-settings-btn">
                 <span>Account</span>
-            </a>
+            </button>
         </div>
 
             <label class="sound-toggle">
@@ -65,14 +65,16 @@
                 </div>
 
                 <!-- Updates Card -->
-                <div class="glass-card updates-card">
-                    <h3>Updates</h3>
-                    <ul class="notification-list" id="notification-list">
+				<div class="glass-card updates-card">
+					<h3>Updates</h3>
+
+					<ul class="notification-list" id="notification-list">
                     </ul>
-                    <button class="btn clear-updates-btn" onclick="clearUpdates()">
+
+					<button class="btn clear-updates-btn" onclick="clearUpdates()">
                         Clear Updates
-                    </button>
-                </div>
+					</button>
+				</div>
 
                 <!-- Services Card -->
                 <div class="glass-card services-link-card">
@@ -155,14 +157,53 @@
             </div>
         </div>
 
+        <!-- ACCOUNT SETTINGS VIEW -->
+        <div class="dashboard-wrapper" id="account-settings-view" style="display: none;">
+
+            <h1>Your Queue<span>Smart</span> Account</h1>
+
+            <button type="button" class="btn small-btn" id="profile-back-btn">
+                <i class="bx bx-arrow-back"></i> Go Back
+            </button>
+
+            <div class="glass-card">
+                <h3>Edit Profile</h3>
+
+                <form id="profile-form">
+                    <label for="full-name">Full Name</label>
+                    <input type="text" id="full-name" required maxlength="100">
+
+                    <label for="email">Email</label>
+                    <input type="email" id="email" disabled>
+
+                    <label for="phone">Phone Number</label>
+                    <input
+                        type="tel"
+                        id="phone"
+                        pattern="[0-9]{10}"
+                        maxlength="10"
+                        minlength="10"
+                        placeholder="Enter 10-digit phone number"
+                    >
+
+                    <button type="submit" class="btn">Save Changes</button>
+                </form>
+
+                <p id="profile-message" role="status"></p>
+            </div>
+
+        </div>
     </div>
 
     <script>
         const dashboardView = document.getElementById("dashboard-view");
         const servicesView = document.getElementById("services-view");
-        
+        const accountSettingsView = document.getElementById("account-settings-view");
+
         const showServicesBtn = document.getElementById("show-services");
         const showDashboardBtn = document.getElementById("show-dashboard");
+        const accountSettingsBtn = document.getElementById("account-settings-btn");
+        const profileBackBtn = document.getElementById("profile-back-btn");
 
         let queueTimer = null;
         let notificationTimer = null;
@@ -174,6 +215,8 @@
         let notificationsInitialized = false;
         const notifySound = new Audio("notification.mp3");
         const muteSoundCheckbox = document.getElementById("mute-sound-checkbox");
+        let notificationQueue = [];
+        let isShowingNotification = false;
 
         // Toggle to Services View
         showServicesBtn.addEventListener("click", async function(event) {
@@ -187,6 +230,25 @@
         showDashboardBtn.addEventListener("click", function(event) {
             event.preventDefault();
             servicesView.style.display = "none";
+            dashboardView.style.display = "block";
+        });
+
+        // Toggle to Account Settings View
+        accountSettingsBtn.addEventListener("click", async function(event) {
+            event.preventDefault();
+
+            dashboardView.style.display = "none";
+            servicesView.style.display = "none";
+            accountSettingsView.style.display = "block";
+
+            await loadProfile();
+        });
+
+        // Toggle back to Dashboard from Account Settings
+        profileBackBtn.addEventListener("click", function(event) {
+            event.preventDefault();
+
+            accountSettingsView.style.display = "none";
             dashboardView.style.display = "block";
         });
 
@@ -567,17 +629,30 @@
             }
         }
         
-        // Shows a notification whenever the user moves ahead in the queue
+        // Add notifications to the popup queue
         function showNotification(title, message) {
+            notificationQueue.push({ title, message });
+            displayNextNotification();
+        }
+
+        // Display the next notification in the queue
+        function displayNextNotification() {
+            if (isShowingNotification || notificationQueue.length === 0) {
+                return
+            }
+            isShowingNotification = true;
+
+            const notification = notificationQueue.shift();
             const popup = document.getElementById("notification-popup");
             const titleElement = document.getElementById("notification-title");
             const messageElement = document.getElementById("notification-message");
 
-            titleElement.textContent = title;
-            messageElement.textContent = message;
+            titleElement.textContent = notification.title;
+            messageElement.textContent = notification.message;
 
             popup.classList.add("show");
 
+            // Play sound when the notification appears
             if (!muteSoundCheckbox.checked) {
                 notifySound.currentTime = 0;
 
@@ -586,9 +661,21 @@
                 });
             }
 
+            // Keep the notification visible for 4 seconds
             setTimeout(function() {
                 popup.classList.remove("show");
+
+                // Wait for the swoosh animation to finish
+                setTimeout(function() {
+                    isShowingNotification = false;
+
+                    // Display the next notification
+                    displayNextNotification();
+
+                }, 300);
+
             }, 4000);
+            
         }
         
         // Adds notifications to the Updates section
@@ -603,49 +690,62 @@
             notificationList.prepend(update);
         }
         
-        async function loadNotifications() {
-            const token = sessionStorage.getItem("token");
+		async function loadNotifications() {
+			const token = sessionStorage.getItem("token");
 
-            if (!token) return;
+			if (!token) return;
 
-            try {
-                const response = await fetch("/notifications", {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
+			try {
+				const response = await fetch("/notifications", {
+					headers: {
+						Authorization: `Bearer ${token}`
+					}
+				});
 
-                if (!response.ok) {
-                    throw new Error("Failed to load notifications.");
-                }
+				if (!response.ok) {
+					throw new Error("Failed to load notifications.");
+				}
 
-                const data = await response.json();
-                const notificationList =
-                    document.getElementById("notification-list");
+				const data = await response.json();
 
-                data.notifications.forEach(notification => {
-                    // Add only notifications that are not already displayed
-                    if (!knownNotificationIds.has(notification.id)) {
-                        addUpdate(notification.message);
+				const notificationList =
+					document.getElementById("notification-list");
 
-                        // Show popups only after the initial load
-                        if (notificationsInitialized) {
-                            showNotification(
-                                notification.title,
-                                notification.message
-                            );
-                        }
+				// Remember which notifications were already displayed
+				const previousIds = new Set(knownNotificationIds);
 
-                        knownNotificationIds.add(notification.id);
-                    }
-                });
+				// Rebuild the list using the database's newest-first order
+				notificationList.innerHTML = "";
 
-                notificationsInitialized = true;
+				data.notifications.forEach(notification => {
+					const update = document.createElement("li");
 
-            } catch (error) {
-                console.error("Error loading notifications:", error);
-            }
-        }
+					update.innerHTML =
+						"<i class='bx bx-log-in-circle'></i>" +
+						notification.message;
+
+					notificationList.append(update);
+
+					// Only show popups for genuinely new notifications
+					if (
+						notificationsInitialized &&
+						!previousIds.has(notification.id)
+					) {
+						showNotification(
+							notification.title,
+							notification.message
+						);
+					}
+
+					knownNotificationIds.add(notification.id);
+				});
+
+				notificationsInitialized = true;
+
+			} catch (error) {
+				console.error("Error loading notifications:", error);
+			}
+		}
         
         async function loadHistory() {
             const token = sessionStorage.getItem("token");
@@ -698,6 +798,88 @@
                     "<tr><td colspan='3'>Unable to load history.</td></tr>";
             }
         }
+
+        // Load the user's profile information
+        async function loadProfile() {
+            const token = sessionStorage.getItem("token");
+
+            if (!token) {
+                window.location.replace("/Login.html");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/profile", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Unable to load profile.");
+                }
+
+                const data = await response.json();
+                const profile = data.profile;
+
+                document.getElementById("full-name").value =
+                    profile.full_name || "";
+
+                document.getElementById("email").value =
+                    profile.email || "";
+
+                document.getElementById("phone").value =
+                    profile.phone || "";
+
+            } catch (error) {
+                console.error("Error loading profile:", error);
+
+                document.getElementById("profile-message").textContent =
+                    "Unable to load profile.";
+            }
+        }
+
+        // Save the user's profile changes
+        document.getElementById("profile-form").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const token = sessionStorage.getItem("token");
+
+            const full_name = document.getElementById("full-name").value;
+            const phone = document.getElementById("phone").value;
+
+            try {
+                const response = await fetch("/api/profile", {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ full_name, phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification(
+                        "Profile Update",
+                        "Your settings have been saved."
+                    );
+
+                } else {
+                    showNotification(
+                        "Update Failed",
+                        data.message || "Unable to update profile."
+                    );
+                }
+
+            } catch (error) {
+                console.error("Error updating profile:", error);
+
+                document.getElementById("profile-message").textContent =
+                    "Unable to update profile.";
+            }
+        });
 
         function startDashboardRefresh() {
             // Prevent duplicate refresh intervals
