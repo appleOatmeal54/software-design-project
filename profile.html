@@ -7,14 +7,30 @@
     <title>Account Settings</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="dashboard.css">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 </head>
 <body>
+    <div class="notification-popup" id="notification-popup">
+        <i class="bx bx-bell"></i>
+
+        <div class="notification-popup-content">
+            <div class="notification-popup-title" id="notification-title">
+                QueueSmart
+            </div>
+
+            <div class="notification-popup-message" id="notification-message">
+                Your profile has been updated.
+            </div>
+        </div>
+    </div>
     <div class="dashboard-container">
         <div class="dashboard-wrapper">
 
-            <h1>Account Settings</h1>
+            <h1>Your Queue<span>Smart</span> Account</h1>
 
-            <a href="/dashboard.html" class="btn">Back to Dashboard</a>
+            <a href="/dashboard.html" class="btn small-btn" id="profile-back-btn">
+                <i class="bx bx-arrow-back"></i> Go Back
+            </a>
 
             <div class="glass-card">
                 <h3>Edit Profile</h3>
@@ -27,7 +43,7 @@
                     <input type="email" id="email" disabled>
 
                     <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone">
+                    <input type="tel" id="phone" pattern="[0-9]{10}" maxlength="10" minlength="10" placeholder="Enter 10-digit phone number">
 
                     <button type="submit" class="btn">Save Changes</button>
                 </form>
@@ -39,6 +55,8 @@
     </div>
 
 <script>
+    const notifySound = new Audio("notification.mp3");
+
     async function loadProfile() {
         const token = sessionStorage.getItem("token");
 
@@ -95,8 +113,11 @@
 
             const data = await response.json();
 
-            document.getElementById("profile-message").textContent =
-                data.message || "Unable to update profile.";
+            if (response.ok) {
+                showNotification("Profile Update", "Your settings have been saved");
+            } else {
+                showNotification("Update Failed", data.message || "Unable to update profile.");
+            }
 
         } catch (error) {
             console.error("Error updating profile:", error);
@@ -106,6 +127,25 @@
     });
 
     loadProfile();
+
+    function showNotification(title, message) {
+        const popup = document.getElementById("notification-popup");
+
+        document.getElementById("notification-title").textContent = title;
+        document.getElementById("notification-message").textContent = message;
+
+        popup.classList.add("show");
+
+        // Play notification sound
+        notifySound.currentTime = 0;
+        notifySound.play().catch(error => {
+            console.warn("Notification sound could not play:", error);
+        });
+
+        setTimeout(function() {
+            popup.classList.remove("show");
+        }, 4000);
+    }
 </script>
 
 </body>

@@ -321,3 +321,35 @@
     align-self: flex-start;
     margin-top: 20px;
 }
+
+/* Settings Button */
+
+#dashboard-view .settings-btn {
+    position: absolute;
+    top: 0px;
+    left: 60px;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+
+    color: #fff;
+    text-decoration: none !important;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+#dashboard-view .settings-btn span {
+    text-decoration: underline;
+}
+
+#dashboard-view .settings-btn:hover {
+    color: #3b82f6 !important;
+}
+
+#profile-back-btn {
+    position: absolute;
+    top: 80px;
+    left: 40px;
+}
