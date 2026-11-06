@@ -20,4 +20,11 @@ const serviceSchema = fs.readFileSync(
 );
 db.exec(serviceSchema);
 
+// Read and execute the queue, history, and notification schema
+const queueSchema = fs.readFileSync(
+    path.join(__dirname, "database", "queue_schema.sql"),
+    "utf8"
+);
+db.exec(queueSchema);
+
 module.exports = db;
