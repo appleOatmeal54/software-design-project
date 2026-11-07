@@ -98,20 +98,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-    // Mock data (UI only)
-    let services = [
-        { id: 1, name: "Academic Advising", desc: "Course planning and degree audits.", duration: 30, priority: "medium", open: true,
-          queue: ["Maria Lopez", "James Carter", "Aisha Khan", "Tom Nguyen"] },
-        { id: 2, name: "Financial Aid Support", desc: "FAFSA, grants and loans.", duration: 45, priority: "high", open: true,
-          queue: ["Lena Brooks", "Omar Diaz", "Sara Kim", "Ben Ortiz", "Priya Shah", "Chris Lee", "Dana Fox", "Eli Ward"] },
-        { id: 3, name: "Business & Payment", desc: "Tuition payments and holds.", duration: 15, priority: "low", open: true,
-          queue: ["Noah Reed", "Ivy Chen"] },
-        { id: 4, name: "Registrar & Records", desc: "Transcripts and enrollment letters.", duration: 10, priority: "low", open: false,
-          queue: [] },
-        { id: 5, name: "Veteran Services", desc: "Benefits and certification help.", duration: 20, priority: "medium", open: true,
-          queue: ["Sam Hall", "Rita Moss", "Joe Park"] }
-    ];
-    let nextId = 6, editingId = null, selectedId = 1;
+    // Services are loaded from the SQLite database.
+    let services = [];
+    let nextId = 1;
+    let editingId = null;
+    let selectedId = null;
 
     // shortcuts to simplify code
     // getElement == document.getElementById
@@ -265,8 +256,6 @@
                 <span class="pos">${i + 1}</span>
                 <span class="name">${esc(u)}</span>
                 <span class="wait-time" aria-label="Estimated wait time: ${estimateWaitTime(i + 1, s.duration)} minutes">${estimateWaitTime(i + 1, s.duration)} min</span>
-                <button class="action-btn ghost" ${i === 0 ? "disabled" : ""} onclick="move(${i}, -1)" aria-label="Move up"><i class='bx bx-up-arrow-alt'></i></button>
-                <button class="action-btn ghost" ${i === s.queue.length - 1 ? "disabled" : ""} onclick="move(${i}, 1)" aria-label="Move down"><i class='bx bx-down-arrow-alt'></i></button>
                 <button class="action-btn danger" onclick="removeUser(${i})">Remove</button>
             </li>`).join("") : `<li class="empty">Nobody is waiting in this queue.</li>`;
     }
@@ -274,12 +263,6 @@
     getElement("queue-select").addEventListener("change", e => { selectedId = +e.target.value; getElement("serving").textContent = ""; renderQueue(); });
 
     function current() { return services.find(s => s.id === selectedId); }
-
-    function move(i, dir) {
-        const q = current().queue;
-        [q[i], q[i + dir]] = [q[i + dir], q[i]];
-        renderAll();
-    }
 
     // simple wait time estimation: position in queue * expected duration of specific service
     function estimateWaitTime(position, duration) {
@@ -312,10 +295,8 @@
                 return;
             }
 
-            svc.queue.splice(i, 1);
-
             toast(`${userName} removed from queue`);
-            renderAll();
+            await loadFromBackend();
 
         } catch (error) {
             console.error("Error removing user:", error);
@@ -325,15 +306,37 @@
 
     getElement("serve-btn").addEventListener("click", async () => {
         const svc = current();
-        await fetch("/queue/serve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ serviceId: svc.id })
-        });
-        const u = svc.queue.shift();
-        if (u) { getElement("serving").textContent = "Now serving: " + u; toast(`Serving ${u}`); }
-        renderAll();
+
+        if (!svc || !svc.queue.length) return;
+
+        try {
+            const response = await fetch("/queue/serve", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ serviceId: svc.id })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast(data.error || "Could not serve the next user.");
+                return;
+            }
+
+            const servedName = data.servedUser?.userName || "the next user";
+
+            getElement("serving").textContent = "Now serving: " + servedName;
+            toast(`Serving ${servedName}`);
+
+            // Reload the actual database data.
+            await loadFromBackend();
+
+        } catch (error) {
+            console.error("Error serving queue:", error);
+            toast("Network error. Could not serve the next user.");
+        }
     });
+
     getElement("cancel-btn").addEventListener("click", resetForm);
 
     function renderAll() {

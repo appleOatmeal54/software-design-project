@@ -1,12 +1,24 @@
-// API Controller 
+// API Controller
 const express = require("express");
 const router = express.Router();
-let { queues } = require("../data/queueData");
-let { services } = require("../data/servicesData");
+
+const db = require("../database");
+
+const {
+    getQueueByService,
+    getQueueEntries,
+    addQueueEntry,
+    getWaitingEntryForUser,
+    cancelQueueEntry,
+    serveNextQueueEntry,
+    getWaitingCount
+} = require("../data/queueData");
+
+const { getServiceById } = require("../data/servicesData");
 const { addNotification } = require("../data/notificationData");
 const { addHistory } = require("../data/historyData");
 
-// Priority weights for sorting (High = 3, Medium = 2, Low = 1)
+// Priority weights: High first, then Medium, then Low.
 const priorityWeight = {
     High: 3,
     high: 3,
@@ -16,195 +28,39 @@ const priorityWeight = {
     low: 1
 };
 
-// Helper: Sort queue by Priority (highest first), then by Arrival Order (oldest first)
-function getSortedQueue(serviceId) {
-    return queues
-        .filter(entry => String(entry.serviceId) === String(serviceId))
-        .sort((a, b) => {
-            const weightA = priorityWeight[a.priority] || 2;
-            const weightB = priorityWeight[b.priority] || 2;
-            if (weightB !== weightA) {
-                return weightB - weightA; // Higher priority first
-            }
-            return a.joinedAt - b.joinedAt; // Earlier arrival time first
-        });
+// Find a database user by email.
+function findUser(userEmail) {
+    return db.prepare(`
+        SELECT user_id, email
+        FROM UserCredentials
+        WHERE LOWER(email) = ?
+    `).get(userEmail.trim().toLowerCase());
 }
 
-// 1. GET /queue - View all queues or filter by ?serviceId=1 (Admin & User)
-router.get("/", (req, res) => {
-    const { serviceId } = req.query;
-    if (serviceId) {
-        return res.status(200).json(getSortedQueue(serviceId));
-    }
-    res.status(200).json(queues);
-});
+// Sort queue entries by priority and arrival time.
+function getSortedQueue(serviceId) {
+    const queue = getQueueByService(serviceId);
 
-// 2. GET /queue/:serviceId - View sorted queue for a specific service
-router.get("/:serviceId", (req, res) => {
-    const { serviceId } = req.params;
-    const service = services.find(s => String(s.id) === String(serviceId));
+    if (!queue) return [];
 
-    if (!service) {
-        return res.status(404).json({ error: "Service not found." });
-    }
+    return getQueueEntries(queue.queueId).sort((a, b) => {
+        const weightA = priorityWeight[a.priority] || 2;
+        const weightB = priorityWeight[b.priority] || 2;
 
-    const sortedQueue = getSortedQueue(serviceId);
-    res.status(200).json({
-        service: service.name,
-        count: sortedQueue.length,
-        queue: sortedQueue
-    });
-});
+        if (weightB !== weightA) {
+            return weightB - weightA;
+        }
 
-// 3. POST /queue/join - User joins a queue
-router.post("/join", (req, res) => {
-    const { serviceId, userName, priority } = req.body;
-
-    // Backend Validations (Required fields, types, length limits)
-    if (!serviceId || !userName) {
-        return res.status(400).json({ error: "serviceId and userName are required." });
-    }
-    if (typeof userName !== "string" || userName.trim().length === 0 || userName.trim().length > 100) {
-        return res.status(400).json({ error: "userName must be a non-empty string up to 100 characters." });
-    }
-
-    const service = services.find(s => String(s.id) === String(serviceId));
-    if (!service) {
-        return res.status(404).json({ error: "Service not found." });
-    }
-    if (service.status === "Closed") {
-        return res.status(400).json({ error: "Cannot join a closed queue." });
-    }
-
-    // Prevent duplicate entries in the same service queue
-    const alreadyInQueue = queues.some(
-        q => q.userName.toLowerCase() === userName.trim().toLowerCase()
-    );
-
-    if (alreadyInQueue) {
-        return res.status(400).json({
-            error: "You are already in a queue."
-        });
-    }
-
-    const validPriorities = ["Low", "Medium", "High", "low", "medium", "high"];
-    const chosenPriority = priority || service.priorityLevel || "Medium";
-    if (!validPriorities.includes(chosenPriority)) {
-        return res.status(400).json({ error: "Invalid priority level." });
-    }
-
-    const newEntry = {
-        id: "q" + Date.now(),
+        return String(a.joinedAt).localeCompare(String(b.joinedAt));
+    }).map((entry, index) => ({
+        ...entry,
         serviceId: String(serviceId),
-        userName: userName.trim(),
-        priority: chosenPriority,
-        joinedAt: Date.now()
-    };
+        userName: entry.userName,
+        position: index + 1
+    }));
+}
 
-    queues.push(newEntry);
-
-    addHistory(
-        userName.trim().toLowerCase(),
-        service.name,
-        "Joined"
-    );
-
-    addNotification(
-        userName.trim().toLowerCase(),
-        "Queue Update",
-        `You joined ${service.name}`,
-        {
-            type: "joined",
-            serviceId: String(serviceId)
-        }
-    );
-
-    // Calculate new position and estimated wait time (position * expectedDuration)
-    const sortedQueue = getSortedQueue(serviceId);
-    const position = sortedQueue.findIndex(q => q.id === newEntry.id) + 1;
-    const estimatedWaitTime = position * service.expectedDuration;
-
-    res.status(201).json({
-        message: `Joined ${service.name} queue successfully`,
-        entry: newEntry,
-        position,
-        estimatedWaitTime
-    });
-});
-
-// 4. POST /queue/leave - User leaves a queue (or Admin removes a user)
-router.post("/leave", (req, res) => {
-    const { serviceId, userName, action } = req.body;
-
-    if (!serviceId || !userName || typeof userName !== "string") {
-        return res.status(400).json({
-            error: "Valid serviceId and userName are required."
-        });
-    }
-
-    const index = queues.findIndex(
-        q =>
-            String(q.serviceId) === String(serviceId) &&
-            q.userName.trim().toLowerCase() === userName.trim().toLowerCase()
-    );
-
-    if (index === -1) {
-        return res.status(404).json({
-            error: "User not found in the specified queue."
-        });
-    }
-
-    const service = services.find(
-        s => String(s.id) === String(serviceId)
-    );
-
-    const [removed] = queues.splice(index, 1);
-    const serviceName = service ? service.name : "the queue";
-    const isAdminRemoval = action === "remove";
-
-    if (!isAdminRemoval) {
-        addHistory(
-            removed.userName,
-            serviceName,
-            "Left"
-        );
-    }
-
-    if (isAdminRemoval) {
-        addHistory(
-            removed.userName,
-            serviceName,
-            "Removed"
-        );
-    }
-
-    const title = isAdminRemoval
-        ? "Service Incomplete"
-        : "Queue Update";
-
-    const message = isAdminRemoval
-        ? `${serviceName} removed you`
-        : `You left ${serviceName}`;
-
-    addNotification(
-        removed.userName.trim().toLowerCase(),
-        title,
-        message,
-        {
-            type: isAdminRemoval ? "admin_removed" : "user_left",
-            serviceId: String(serviceId)
-        }
-    );
-
-    return res.status(200).json({
-        message: isAdminRemoval
-            ? `Removed ${removed.userName} from the queue.`
-            : "Left queue successfully.",
-        action: isAdminRemoval ? "remove" : "leave",
-        removed
-    });
-});
-
+// Convert numeric positions into ordinal text.
 function getPositionText(position) {
     const positions = {
         1: "first",
@@ -219,9 +75,7 @@ function getPositionText(position) {
         10: "tenth"
     };
 
-    if (positions[position]) {
-        return positions[position];
-    }
+    if (positions[position]) return positions[position];
 
     const lastTwoDigits = position % 100;
 
@@ -237,72 +91,367 @@ function getPositionText(position) {
     }
 }
 
-// 5. POST /queue/serve - Administrator serves the next user in line
-router.post("/serve", (req, res) => {
-    const { serviceId } = req.body;
+// 1. GET /queue - View all waiting entries or filter by serviceId.
+router.get("/", (req, res) => {
+    try {
+        const { serviceId } = req.query;
 
-    if (!serviceId) {
-        return res.status(400).json({ error: "serviceId is required" });
-    }
-
-    const sortedQueue = getSortedQueue(serviceId);
-    if (sortedQueue.length === 0) {
-        return res.status(400).json({ error: "Queue is currently empty" });
-    }
-
-    // Grab the highest-priority / earliest-arriving user at the front of the queue
-    const nextUser = sortedQueue[0];
-    const indexInGlobal = queues.findIndex(q => q.id === nextUser.id);
-    queues.splice(indexInGlobal, 1);
-
-    const service = services.find(
-        s => String(s.id) === String(serviceId)
-    );
-
-    addHistory(
-        nextUser.userName,
-        service ? service.name : "Unknown Service",
-        "Served"
-    );
-
-    addNotification(
-        nextUser.userName.trim().toLowerCase(),
-        "Service Complete",
-        `${ service ? service.name : "the service"} has served you!`,
-        {
-            type: "served",
-            serviceId: String(serviceId)
+        if (serviceId) {
+            return res.status(200).json(getSortedQueue(serviceId));
         }
-    );
-    
-    // Notify users whose queue positions have changed
-    const updatedQueue = getSortedQueue(serviceId);
 
-    updatedQueue.forEach((entry, index) => {
-        const newPosition = index + 1;
+        // Return individual waiting users, not queue summary records.
+        const entries = db.prepare(`
+            SELECT
+                e.entry_id AS id,
+                e.queue_id AS queueId,
+                e.user_id AS userId,
+                up.full_name AS userName,
+                e.position,
+                e.priority,
+                e.join_time AS joinedAt,
+                e.status,
+                q.service_id AS serviceId,
+                s.service_name AS serviceName
+            FROM QueueEntry e
+            JOIN Queue q ON q.queue_id = e.queue_id
+            JOIN Service s ON s.service_id = q.service_id
+            JOIN UserCredentials u ON u.user_id = e.user_id
+            JOIN UserProfile up ON up.user_id = e.user_id
+            WHERE e.status = 'waiting'
+            ORDER BY
+                q.service_id,
+                CASE e.priority
+                    WHEN 'High' THEN 1
+                    WHEN 'Medium' THEN 2
+                    WHEN 'Low' THEN 3
+                    ELSE 4
+                END,
+                e.join_time ASC,
+                e.entry_id ASC
+        `).all();
 
-        const message = newPosition === 1
-            ? "You are next in line!"
-            : `You moved to ${getPositionText(newPosition)} position`;
+        return res.status(200).json(entries);
+    } catch (error) {
+        console.error("Error retrieving queues:", error);
+        return res.status(500).json({ error: "Failed to retrieve queues." });
+    }
+});
+
+// 2. GET /queue/:serviceId - View a specific service queue.
+router.get("/:serviceId", (req, res) => {
+    try {
+        const { serviceId } = req.params;
+        const service = getServiceById(serviceId);
+
+        if (!service) {
+            return res.status(404).json({ error: "Service not found." });
+        }
+
+        const sortedQueue = getSortedQueue(serviceId);
+
+        return res.status(200).json({
+            service: service.name,
+            count: sortedQueue.length,
+            queue: sortedQueue
+        });
+    } catch (error) {
+        console.error("Error retrieving service queue:", error);
+        return res.status(500).json({ error: "Failed to retrieve service queue." });
+    }
+});
+
+// 3. POST /queue/join - User joins a queue.
+router.post("/join", (req, res) => {
+    try {
+        const { serviceId, userName, priority } = req.body;
+
+        if (!serviceId || !userName) {
+            return res.status(400).json({
+                error: "serviceId and userName are required."
+            });
+        }
+
+        if (
+            typeof userName !== "string" ||
+            userName.trim().length === 0 ||
+            userName.trim().length > 100
+        ) {
+            return res.status(400).json({
+                error: "userName must be a non-empty string up to 100 characters."
+            });
+        }
+
+        const service = getServiceById(serviceId);
+
+        if (!service) {
+            return res.status(404).json({ error: "Service not found." });
+        }
+
+        if (service.status === "Closed") {
+            return res.status(400).json({
+                error: "Cannot join a closed queue."
+            });
+        }
+
+        const user = findUser(userName);
+
+        if (!user) {
+            return res.status(404).json({
+                error: "User account not found."
+            });
+        }
+
+        if (getWaitingEntryForUser(user.user_id)) {
+            return res.status(400).json({
+                error: "You are already in a queue."
+            });
+        }
+
+        const validPriorities = ["Low", "Medium", "High", "low", "medium", "high"];
+        const chosenPriority = priority || service.priorityLevel || "Medium";
+
+        if (!validPriorities.includes(chosenPriority)) {
+            return res.status(400).json({ error: "Invalid priority level." });
+        }
+
+        const normalizedPriority =
+            chosenPriority.charAt(0).toUpperCase() +
+            chosenPriority.slice(1).toLowerCase();
+
+        const queue = getQueueByService(serviceId);
+
+        if (!queue || queue.status !== "open") {
+            return res.status(400).json({
+                error: "Cannot join a closed queue."
+            });
+        }
+
+        const newEntry = addQueueEntry(
+            queue.queueId,
+            user.user_id,
+            normalizedPriority
+        );
+
+        addHistory(user.email, service.name, "Joined");
 
         addNotification(
-            entry.userName.trim().toLowerCase(),
+            user.email,
             "Queue Update",
-            message,
+            `You joined ${service.name}`,
             {
-                type: newPosition === 1
-                    ? "next_in_line"
-                    : "position_update",
+                type: "joined",
                 serviceId: String(serviceId)
             }
         );
-    });
-    
-    res.status(200).json({
-        message: `Now serving ${nextUser.userName}`,
-        servedUser: nextUser,
-        remainingInQueue: sortedQueue.length - 1
-    });
+
+        const sortedQueue = getSortedQueue(serviceId);
+        const position = sortedQueue.findIndex(
+            entry => entry.id === newEntry.id
+        ) + 1;
+
+        const estimatedWaitTime = position * service.expectedDuration;
+
+        return res.status(201).json({
+            message: `Joined ${service.name} queue successfully`,
+            entry: {
+                ...newEntry,
+                serviceId: String(serviceId),
+                userName: user.email,
+                joinedAt: newEntry.joinedAt
+            },
+            position,
+            estimatedWaitTime
+        });
+    } catch (error) {
+        console.error("Error joining queue:", error);
+        return res.status(500).json({ error: "Failed to join queue." });
+    }
+});
+
+// 4. POST /queue/leave - User leaves or admin removes a user.
+router.post("/leave", (req, res) => {
+    try {
+        const { serviceId, userName, action } = req.body;
+
+        if (!serviceId || !userName || typeof userName !== "string") {
+            return res.status(400).json({
+                error: "Valid serviceId and userName are required."
+            });
+        }
+
+        const service = getServiceById(serviceId);
+
+        if (!service) {
+            return res.status(404).json({ error: "Service not found." });
+        }
+
+        const user = findUser(userName);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        const queue = getQueueByService(serviceId);
+
+        if (!queue) {
+            return res.status(404).json({ error: "Queue not found." });
+        }
+
+        const entry = db.prepare(`
+            SELECT
+                e.entry_id AS id,
+                e.queue_id AS queueId,
+                e.user_id AS userId,
+                up.full_name AS userName,
+                e.position,
+                e.priority,
+                e.join_time AS joinedAt,
+                e.status
+            FROM QueueEntry e
+            JOIN UserCredentials u ON u.user_id = e.user_id
+            JOIN UserProfile up ON up.user_id = e.user_id
+            WHERE e.queue_id = ?
+              AND e.user_id = ?
+              AND e.status = 'waiting'
+            ORDER BY e.entry_id DESC
+            LIMIT 1
+        `).get(queue.queueId, user.user_id);
+
+        if (!entry) {
+            return res.status(404).json({
+                error: "User not found in the specified queue."
+            });
+        }
+
+        const isAdminRemoval = action === "remove";
+
+        cancelQueueEntry(entry.id);
+
+        const outcome = isAdminRemoval ? "Removed" : "Left";
+
+        addHistory(user.email, service.name, outcome);
+
+        addNotification(
+            user.email,
+            isAdminRemoval ? "Service Incomplete" : "Queue Update",
+            isAdminRemoval
+                ? `${service.name} removed you`
+                : `You left ${service.name}`,
+            {
+                type: isAdminRemoval ? "admin_removed" : "user_left",
+                serviceId: String(serviceId)
+            }
+        );
+
+        return res.status(200).json({
+            message: isAdminRemoval
+                ? `Removed ${user.email} from the queue.`
+                : "Left queue successfully.",
+            action: isAdminRemoval ? "remove" : "leave",
+            removed: {
+                ...entry,
+                serviceId: String(serviceId)
+            }
+        });
+    } catch (error) {
+        console.error("Error leaving queue:", error);
+        return res.status(500).json({ error: "Failed to leave queue." });
+    }
+});
+
+// 5. POST /queue/serve - Administrator serves the next user.
+router.post("/serve", (req, res) => {
+    try {
+        const { serviceId } = req.body;
+
+        if (!serviceId) {
+            return res.status(400).json({ error: "serviceId is required." });
+        }
+
+        const service = getServiceById(serviceId);
+
+        if (!service) {
+            return res.status(404).json({ error: "Service not found." });
+        }
+
+        const sortedQueue = getSortedQueue(serviceId);
+
+        if (sortedQueue.length === 0) {
+            return res.status(400).json({
+                error: "Queue is currently empty."
+            });
+        }
+
+        const servedEntry = serveNextQueueEntry(
+            getQueueByService(serviceId).queueId
+        );
+
+        if (!servedEntry) {
+            return res.status(400).json({
+                error: "Queue is currently empty."
+            });
+        }
+
+        const servedUser = db.prepare(`
+            SELECT email
+            FROM UserCredentials
+            WHERE user_id = ?
+        `).get(servedEntry.userId);
+
+        if (!servedUser) {
+            return res.status(404).json({ error: "Served user not found." });
+        }
+
+        addHistory(servedUser.email, service.name, "Served");
+
+        addNotification(
+            servedUser.email,
+            "Service Complete",
+            `${service.name} has served you!`,
+            {
+                type: "served",
+                serviceId: String(serviceId)
+            }
+        );
+
+        const updatedQueue = getSortedQueue(serviceId);
+
+        updatedQueue.forEach((entry, index) => {
+            const newPosition = index + 1;
+
+            const message = newPosition === 1
+                ? "You are next in line!"
+                : `You moved to ${getPositionText(newPosition)} position`;
+
+            addNotification(
+                entry.userName,
+                "Queue Update",
+                message,
+                {
+                    type: newPosition === 1
+                        ? "next_in_line"
+                        : "position_update",
+                    serviceId: String(serviceId)
+                }
+            );
+        });
+
+        return res.status(200).json({
+            message: `Now serving ${servedUser.email}`,
+            servedUser: {
+                ...servedEntry,
+                serviceId: String(serviceId),
+                userName: servedUser.email
+            },
+            remainingInQueue: getWaitingCount(
+                getQueueByService(serviceId).queueId
+            )
+        });
+    } catch (error) {
+        console.error("Error serving queue entry:", error);
+        return res.status(500).json({ error: "Failed to serve queue entry." });
+    }
 });
 
 module.exports = router;

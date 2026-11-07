@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS QueueEntry (
     queue_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     position INTEGER NOT NULL CHECK(position > 0),
+    priority TEXT NOT NULL DEFAULT 'Medium'
+        CHECK(priority IN ('Low', 'Medium', 'High')),
     reason TEXT,
     join_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     status TEXT NOT NULL DEFAULT 'waiting'
@@ -27,7 +29,7 @@ CREATE TABLE IF NOT EXISTS QueueEntry (
         REFERENCES UserCredentials(user_id)
 );
 
--- NotificationHistory table: permanently stores user notifications
+-- NotificationHistory: stores permanent notifications
 CREATE TABLE IF NOT EXISTS NotificationHistory (
     notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -45,14 +47,7 @@ CREATE TABLE IF NOT EXISTS NotificationHistory (
         REFERENCES Service(service_id)
 );
 
--- Indexes to make retrieving individual users' records faster
-CREATE INDEX IF NOT EXISTS idx_queueentry_user
-ON QueueEntry(user_id);
-
-CREATE INDEX IF NOT EXISTS idx_notificationhistory_user
-ON NotificationHistory(user_id);
-
--- QueueHistory: stores each individual queue activity
+-- QueueHistory: stores individual queue activities
 CREATE TABLE IF NOT EXISTS QueueHistory (
     history_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -67,6 +62,16 @@ CREATE TABLE IF NOT EXISTS QueueHistory (
     FOREIGN KEY (service_id)
         REFERENCES Service(service_id)
 );
+
+-- Indexes for faster database lookups
+CREATE INDEX IF NOT EXISTS idx_queueentry_user
+ON QueueEntry(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_queueentry_queue_status
+ON QueueEntry(queue_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_notificationhistory_user
+ON NotificationHistory(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_queuehistory_user
 ON QueueHistory(user_id);

@@ -79,7 +79,7 @@
                 <!-- Services Card -->
                 <div class="glass-card services-link-card">
                     <h3>Services</h3>
-                    <p>Services Available: <strong>5</strong></p>
+                    <p>Services Available: <strong id="services-count">0</strong></p>
                     <button class="btn view-services-btn" id="show-services">View Services</button>
                 </div>
 
@@ -114,46 +114,8 @@
             
             <p class="subtitle">Same day appointments - Select one to join</p>
 
-            <div class="services-grid">
-                <!-- Service 1 -->
-                <div class="glass-card service-item">
-                    <h3>Academic Advising</h3>
-                    <p>Average wait time: 30m</p>
-                    <p>Current People in Q: 4</p>
-                    <button class="btn join-btn" onclick="joinQueue(4, 30, 'Academic Advising')">Join Queue</button>
-                </div>
-
-                <!-- Service 2 -->
-                <div class="glass-card service-item">
-                    <h3>Financial Aid Support</h3>
-                    <p>Average wait time: 45m</p>
-                    <p>Current People in Q: 8</p>
-                    <button class="btn join-btn" onclick="joinQueue(8, 45, 'Financial Aid Support')">Join Queue</button>
-                </div>
-
-                <!-- Service 3 -->
-                <div class="glass-card service-item">
-                    <h3>Business & Payment</h3>
-                    <p>Average wait time: 15m</p>
-                    <p>Current People in Q: 2</p>
-                    <button class="btn join-btn" onclick="joinQueue(2, 15, 'Business & Payment')">Join Queue</button>
-                </div>
-
-                <!-- Service 4 -->
-                <div class="glass-card service-item">
-                    <h3>Registrar & Records</h3>
-                    <p>Average wait time: 10m</p>
-                    <p>Current People in Q: 1</p>
-                    <button class="btn join-btn" onclick="joinQueue(1, 10, 'Registrar & Records')">Join Queue</button>
-                </div>
-
-                <!-- Service 5 -->
-                <div class="glass-card service-item">
-                    <h3>Veteran Services</h3>
-                    <p>Average wait time: 20m</p>
-                    <p>Current People in Q: 3</p>
-                    <button class="btn join-btn" onclick="joinQueue(3, 20, 'Veteran Services')">Join Queue</button>
-                </div>
+            <div class="services-grid" id="services-grid">
+                <!-- Services will be loaded dynamically from the database. -->
             </div>
         </div>
 
@@ -213,6 +175,7 @@
         let notificationRefreshTimer = null;
         let knownNotificationIds = new Set();
         let notificationsInitialized = false;
+        let isLoadingNotifications = false;
         const notifySound = new Audio("notification.mp3");
         const muteSoundCheckbox = document.getElementById("mute-sound-checkbox");
         let notificationQueue = [];
@@ -256,15 +219,6 @@
         let currentUserName = sessionStorage.getItem("userEmail") || "Student User";
         let previousQueuePosition = null;
         let isRefreshingQueue = false;
-
-        // Map service names to IDs for the existing HTML buttons
-        const serviceNameMap = {
-            "Academic Advising": "1",
-            "Financial Aid Support": "2",
-            "Business & Payment": "3",
-            "Registrar & Records": "4",
-            "Veteran Services": "5"
-        };
         
         async function restoreExistingQueue() {
             const token = sessionStorage.getItem("token");
@@ -341,27 +295,68 @@
                 }
 
                 const services = await response.json();
-                const serviceCards = document.querySelectorAll(".service-item");
+                const servicesGrid = document.getElementById("services-grid");
 
-                for (const card of serviceCards) {
-                    const title = card.querySelector("h3");
-                    const service = services.find(
-                        item => item.name === title.textContent.trim()
-                    );
+                document.getElementById("services-count").textContent =
+                    services.length;
 
-                    if (!service) continue;
+                // Check whether the displayed services need to be rebuilt.
+                const currentIds = Array.from(
+                    servicesGrid.querySelectorAll(".service-item")
+                ).map(card => card.dataset.serviceId).join(",");
 
-                    const queueResponse = await fetch(
-                        `/queue/${service.id}`
-                    );
+                const newIds = services.map(
+                    service => String(service.id)
+                ).join(",");
+
+                // Only recreate cards when the service list actually changes.
+                if (currentIds !== newIds) {
+                    servicesGrid.innerHTML = "";
+
+                    for (const service of services) {
+                        const card = document.createElement("div");
+                        card.className = "glass-card service-item";
+                        card.dataset.serviceId = String(service.id);
+
+                        const title = document.createElement("h3");
+                        title.textContent = service.name;
+
+                        const wait = document.createElement("p");
+                        const people = document.createElement("p");
+
+                        const joinButton = document.createElement("button");
+                        joinButton.className = "btn join-btn";
+
+                        joinButton.addEventListener("click", () => {
+                            joinQueue(service.id, service.name);
+                        });
+
+                        card.append(title, wait, people, joinButton);
+                        servicesGrid.appendChild(card);
+                    }
+                }
+
+                // Update existing cards without rebuilding them.
+                for (const service of services) {
+                    const queueResponse = await fetch(`/queue/${service.id}`);
 
                     if (!queueResponse.ok) continue;
 
                     const queueData = await queueResponse.json();
                     const duration = Number(service.expectedDuration) || 0;
-                    const count = queueData.count;
+                    const count = Number(queueData.count) || 0;
+                    const isClosed = service.status === "Closed";
 
-                    // Update the displayed service information
+                    const card = Array.from(
+                        servicesGrid.querySelectorAll(".service-item")
+                    ).find(card =>
+                        card.dataset.serviceId === String(service.id)
+                    );
+
+                    if (!card) continue;
+
+                    card.querySelector("h3").textContent = service.name;
+
                     const paragraphs = card.querySelectorAll("p");
 
                     paragraphs[0].textContent =
@@ -370,15 +365,14 @@
                     paragraphs[1].textContent =
                         `Current People in Q: ${count}`;
 
-                    // Prevent joining closed queues
                     const joinButton = card.querySelector(".join-btn");
-                    const isClosed = service.status === "Closed";
 
                     joinButton.disabled = isClosed;
                     joinButton.textContent = isClosed
                         ? "Queue Closed"
                         : "Join Queue";
                 }
+
             } catch (error) {
                 console.error("Unable to refresh services page:", error);
             }
@@ -434,20 +428,21 @@
             }
         }
 
-        async function joinQueue(peopleInQueue, totalWaitTime, serviceName) {
+        async function joinQueue(serviceId, serviceName) {
             if (inQueue) {
                 showNotification("Queue Error", "You are already in a queue");
                 return;
             }
 
-            const serviceId = serviceNameMap[serviceName] || "1";
-            let position = peopleInQueue;
-            let remainingMinutes = totalWaitTime;
+            const token = sessionStorage.getItem("token");
 
             try {
                 const response = await fetch("/queue/join", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
                     body: JSON.stringify({
                         serviceId: serviceId,
                         userName: currentUserName
@@ -457,45 +452,41 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    if (data.error === "You are already in a queue.") {
-                        showNotification(
-                            "Queue Error",
-                            "You are already in a queue"
-                        );
-                        return;
-                    }
-
                     showNotification(
                         "Queue Error",
                         data.error || "Unable to join queue"
                     );
                     return;
                 }
-                position = data.position;
+
+                const position = data.position;
+                const remainingMinutes = data.estimatedWaitTime;
+
                 previousQueuePosition = position;
-                remainingMinutes = data.estimatedWaitTime;
+                currentQueueName = serviceName;
+                currentServiceId = String(serviceId);
+                inQueue = true;
+
+                document.getElementById("leave-queue-btn").disabled = false;
+                servicesView.style.display = "none";
+                dashboardView.style.display = "block";
+
+                document.querySelector(".status-info").innerHTML =
+                    "<p>Position in queue: <strong>" + position + "</strong></p>" +
+                    "<p>ETA time: <strong>" + remainingMinutes + " mins</strong></p>";
+
+                await loadNotifications();
+
+                if (queueTimer) {
+                    clearTimeout(queueTimer);
+                }
+
             } catch (err) {
                 console.error("Error joining queue:", err);
-            }
-
-            const timePerPerson = remainingMinutes / Math.max(1, position);
-            currentQueueName = serviceName;
-            currentServiceId = serviceId;
-
-            inQueue = true;
-            document.getElementById("leave-queue-btn").disabled = false;
-
-            servicesView.style.display = "none";
-            dashboardView.style.display = "block";
-
-            document.querySelector('.status-info').innerHTML =
-                "<p>Position in queue: <strong>" + position + "</strong></p>" +
-                "<p>ETA time: <strong>" + remainingMinutes + " mins</strong></p>";
-            
-            await loadNotifications();
-
-            if (queueTimer) {
-                clearTimeout(queueTimer);
+                showNotification(
+                    "Queue Error",
+                    "Unable to join queue. Please try again."
+                );
             }
         }
         
@@ -576,7 +567,7 @@
                     // Update the interface only. Notifications come from the backend.
                     if (eventType === "admin_removed") {
                         document.querySelector(".status-info").innerHTML =
-                            "<p>You have been</p>";
+                            "<p>You have been removed</p>";
                     } else if (eventType === "served") {
                         document.querySelector(".status-info").innerHTML =
                             "<p>You have been served!</p>";
@@ -677,7 +668,7 @@
             }, 4000);
             
         }
-        
+
         // Adds notifications to the Updates section
         function addUpdate(message) {
             const notificationList = document.getElementById("notification-list");
@@ -690,62 +681,69 @@
             notificationList.prepend(update);
         }
         
-		async function loadNotifications() {
-			const token = sessionStorage.getItem("token");
+        async function loadNotifications() {
+            // Prevent overlapping requests from processing notifications twice.
+            if (isLoadingNotifications) return;
 
-			if (!token) return;
+            const token = sessionStorage.getItem("token");
 
-			try {
-				const response = await fetch("/notifications", {
-					headers: {
-						Authorization: `Bearer ${token}`
-					}
-				});
+            if (!token) return;
 
-				if (!response.ok) {
-					throw new Error("Failed to load notifications.");
-				}
+            isLoadingNotifications = true;
 
-				const data = await response.json();
+            try {
+                const response = await fetch("/notifications", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
 
-				const notificationList =
-					document.getElementById("notification-list");
+                if (!response.ok) {
+                    throw new Error("Failed to load notifications.");
+                }
 
-				// Remember which notifications were already displayed
-				const previousIds = new Set(knownNotificationIds);
+                const data = await response.json();
 
-				// Rebuild the list using the database's newest-first order
-				notificationList.innerHTML = "";
+                const notificationList =
+                    document.getElementById("notification-list");
 
-				data.notifications.forEach(notification => {
-					const update = document.createElement("li");
+                // Remember which notifications were already displayed.
+                const previousIds = new Set(knownNotificationIds);
 
-					update.innerHTML =
-						"<i class='bx bx-log-in-circle'></i>" +
-						notification.message;
+                // Rebuild the list using the database's newest-first order.
+                notificationList.innerHTML = "";
 
-					notificationList.append(update);
+                data.notifications.forEach(notification => {
+                    const update = document.createElement("li");
 
-					// Only show popups for genuinely new notifications
-					if (
-						notificationsInitialized &&
-						!previousIds.has(notification.id)
-					) {
-						showNotification(
-							notification.title,
-							notification.message
-						);
-					}
+                    update.innerHTML =
+                        "<i class='bx bx-log-in-circle'></i>" +
+                        notification.message;
 
-					knownNotificationIds.add(notification.id);
-				});
+                    notificationList.append(update);
 
-				notificationsInitialized = true;
+                    // Only show popups for genuinely new notifications.
+                    if (
+                        notificationsInitialized &&
+                        !previousIds.has(notification.id)
+                    ) {
+                        showNotification(
+                            notification.title,
+                            notification.message
+                        );
+                    }
 
-			} catch (error) {
-				console.error("Error loading notifications:", error);
-			}
-		}
+                    knownNotificationIds.add(notification.id);
+                });
+
+                notificationsInitialized = true;
+
+            } catch (error) {
+                console.error("Error loading notifications:", error);
+            } finally {
+                isLoadingNotifications = false;
+            }
+        }
         
         async function loadHistory() {
             const token = sessionStorage.getItem("token");
@@ -778,15 +776,18 @@
                 data.history.forEach(record => {
                     const row = tableBody.insertRow();
 
+                    const historyDate = new Date(
+                        record.date.replace(" ", "T") + "Z"
+                    );
+
                     row.insertCell().textContent =
-                        new Date(record.date).toLocaleString([], {
+                        historyDate.toLocaleString([], {
                             year: "numeric",
                             month: "numeric",
                             day: "numeric",
                             hour: "numeric",
                             minute: "2-digit"
-                        });
-
+                    });
 
                     row.insertCell().textContent = record.serviceName;
                     row.insertCell().textContent = record.outcome;
@@ -1005,6 +1006,20 @@
             sessionStorage.getItem("token") &&
             currentUserName !== "Student User"
         ) {
+            // Load the service count immediately after login
+            try {
+                const response = await fetch("/services");
+
+                if (response.ok) {
+                    const services = await response.json();
+
+                    document.getElementById("services-count").textContent =
+                        services.length;
+                }
+            } catch (error) {
+                console.error("Unable to load service count:", error);
+            }
+
             // Restore queue state before starting dashboard refreshes
             await restoreExistingQueue();
 
