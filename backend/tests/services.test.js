@@ -1,3 +1,4 @@
+
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_key";
 const request = require("supertest");
 const { app } = require("../server");
@@ -10,8 +11,10 @@ jest.mock("../database", () => {
         get: jest.fn(),
         run: jest.fn()
     };
+
     return {
-        prepare: jest.fn(() => mockStatement)
+        prepare: jest.fn(() => mockStatement),
+        transaction: jest.fn((callback) => callback)
     };
 });
 
@@ -29,12 +32,12 @@ describe("Module 2: Service Management API (/services)", () => {
     test("GET /services should return all initial services", async () => {
         // Simulate the database returning 5 services
         mockStatement.all.mockReturnValue(
-            Array(5).fill({ 
-                service_id: 1, 
-                service_name: "Test", 
-                description: "Desc", 
-                expected_duration: 30, 
-                priority_level: "Medium" 
+            Array(5).fill({
+                service_id: 1,
+                service_name: "Test",
+                description: "Desc",
+                expected_duration: 30,
+                priority_level: "Medium"
             })
         );
 
@@ -46,6 +49,14 @@ describe("Module 2: Service Management API (/services)", () => {
 
     test("POST /services should create a new valid service", async () => {
         mockStatement.run.mockReturnValue({ lastInsertRowid: 6 });
+
+        mockStatement.get.mockReturnValue({
+            service_id: 6,
+            service_name: "IT Help Desk",
+            description: "Laptop and campus Wi-Fi troubleshooting.",
+            expected_duration: 25,
+            priority_level: "High"
+        });
 
         const newService = {
             name: "IT Help Desk",
@@ -88,26 +99,43 @@ describe("Module 2: Service Management API (/services)", () => {
         expect(res.body.error).toMatch(/between 1 and 1440/);
     });
 
-    test("PUT /services/:id should update an existing service", async () => {
-        // Simulate finding the existing service in the database
-        mockStatement.get.mockReturnValue({
-            service_id: 1, 
-            service_name: "Academic Advising", 
-            description: "Desc", 
-            expected_duration: 30, 
-            priority_level: "Medium"
-        });
-        mockStatement.run.mockReturnValue({ changes: 1 });
-
-        const res = await request(app).put("/services/1").send({
+test("PUT /services/:id should update an existing service", async () => {
+    // Simulate finding the existing service in the database
+    mockStatement.get
+        .mockReturnValueOnce({
+            service_id: 1,
+            service_name: "Academic Advising",
+            name: "Academic Advising",
+            description: "Desc",
+            expected_duration: 30,
+            expectedDuration: 30,
+            priority_level: "Medium",
+            priorityLevel: "Medium",
+            status: "Open"
+        })
+        .mockReturnValue({
+            service_id: 1,
+            service_name: "Updated Academic Advising",
             name: "Updated Academic Advising",
-            expectedDuration: 35
+            description: "Desc",
+            expected_duration: 35,
+            expectedDuration: 35,
+            priority_level: "Medium",
+            priorityLevel: "Medium",
+            status: "Open"
         });
-        
-        expect(res.statusCode).toBe(200);
-        expect(res.body.service.name).toBe("Updated Academic Advising");
-        expect(res.body.service.expectedDuration).toBe(35);
+
+    mockStatement.run.mockReturnValue({ changes: 1 });
+
+    const res = await request(app).put("/services/1").send({
+        name: "Updated Academic Advising",
+        expectedDuration: 35
     });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.service.name).toBe("Updated Academic Advising");
+    expect(res.body.service.expectedDuration).toBe(35);
+});
 
     test("PUT /services/:id should return 404 for non-existent service", async () => {
         // Simulate the database finding nothing
@@ -122,10 +150,10 @@ describe("Module 2: Service Management API (/services)", () => {
     test("PUT /services/:id should reject invalid update fields", async () => {
         // Simulate finding the existing service
         mockStatement.get.mockReturnValue({
-            service_id: 1, 
-            service_name: "Valid", 
-            description: "Desc", 
-            expected_duration: 30, 
+            service_id: 1,
+            service_name: "Valid",
+            description: "Desc",
+            expected_duration: 30,
             priority_level: "Medium"
         });
 

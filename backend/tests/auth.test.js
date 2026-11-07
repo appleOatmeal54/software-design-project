@@ -1,6 +1,11 @@
 
 const request = require("supertest");
 const { app, createAdmin } = require("../server");
+const testId = Date.now();
+
+const testUserEmail = `testuser${testId}@example.com`;
+const duplicateEmail = `duplicate${testId}@example.com`;
+const loginEmail = `login${testId}@example.com`;
 
 // Automated tests for the QueueSmart Authentication Module
 describe("Authentication Module", () => {
@@ -17,7 +22,8 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/register")
             .send({
-                email: "testuser@example.com",
+                full_name: "Test User",
+                email: testUserEmail,
                 password: "Password123"
             });
 
@@ -40,7 +46,8 @@ describe("Authentication Module", () => {
         const firstResponse = await request(app)
             .post("/api/register")
             .send({
-                email: "duplicate@example.com",
+                full_name: "Duplicate User",
+                email: duplicateEmail,
                 password: "Password123"
             });
 
@@ -50,7 +57,8 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/register")
             .send({
-                email: "duplicate@example.com",
+                full_name: "Duplicate User",
+                email: duplicateEmail,
                 password: "AnotherPass123"
             });
 
@@ -70,7 +78,7 @@ describe("Authentication Module", () => {
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe(
-            "Email and password must be provided as strings"
+            "Full name, email and password are required"
         );
     });
 
@@ -81,6 +89,7 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/register")
             .send({
+                full_name: "Invalid Email User",
                 email: "invalidemail",
                 password: "Password123"
             });
@@ -96,6 +105,7 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/register")
             .send({
+                full_name: "Short Password User",
                 email: "short@example.com",
                 password: "Pass1"
             });
@@ -113,6 +123,7 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/register")
             .send({
+                full_name: "Long Password User",
                 email: "long@example.com",
                 password: "Password123456789012345"
             });
@@ -131,7 +142,8 @@ describe("Authentication Module", () => {
         const registration = await request(app)
             .post("/api/register")
             .send({
-                email: "login@example.com",
+                full_name: "Login User",
+                email: loginEmail,
                 password: "Password123"
             });
 
@@ -141,7 +153,7 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/login")
             .send({
-                email: "login@example.com",
+                email: loginEmail,
                 password: "Password123"
             });
 
@@ -165,7 +177,7 @@ describe("Authentication Module", () => {
         const response = await request(app)
             .post("/api/login")
             .send({
-                email: "login@example.com",
+                email: loginEmail,
                 password: "WrongPassword123"
             });
 
@@ -207,7 +219,7 @@ describe("Authentication Module", () => {
         const loginResponse = await request(app)
             .post("/api/login")
             .send({
-                email: "login@example.com",
+                email: loginEmail,
                 password: "Password123"
             });
 
@@ -257,5 +269,5 @@ describe("Authentication Module", () => {
         // Verify the authenticated account is an administrator
         expect(response.body.user.role).toBe("admin");
     });
-    
+
 });
