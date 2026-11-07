@@ -246,6 +246,19 @@
     margin-bottom: 5px;
 }
 
+/* Allow the Services page to scroll when many services exist */
+#services-view {
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+/* Keep the bottom of the services list from being cut off */
+#services-view .services-grid {
+    padding-bottom: 30px;
+}
+
 .dashboard-wrapper {
     position: relative;
 }
