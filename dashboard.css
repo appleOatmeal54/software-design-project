@@ -1,4 +1,8 @@
-/* DASHBOARD & SERVICES SCREENS (A2) */
+/* ==========================================
+   MAIN DASHBOARD PAGE
+========================================== */
+
+/* OVERALL DASHBOARD ELEMENTS */
 
 .dashboard-container {
     min-height: 100vh;
@@ -17,6 +21,7 @@
     color: #fff;
     border-radius: 10px;
     padding: 40px;
+    position: relative;
 }
 
 .dashboard-wrapper h1 {
@@ -29,7 +34,12 @@
     color: #3b82f6;
 }
 
-/* Glass Card Components */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+}
 
 .glass-card {
     background: rgba(255, 255, 255, 0.05);
@@ -45,29 +55,106 @@
     padding-bottom: 5px;
 }
 
-/* Dashboard Layout Grid */
+/* OVERALL DASHBOARD BUTTONS */
 
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+.dashboard-wrapper .btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    width: auto !important;
+    text-decoration: underline;
+    color: #fff !important;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 400;
 }
 
-.history-card {
-    grid-column: span 2;
+.dashboard-wrapper .btn:hover {
+    color: #3b82f6 !important;
 }
+
+.leave-btn {
+    color: #ff4d4d !important;
+    margin-top: 15px;
+}
+
+.leave-btn:hover {
+    color: #ff1a1a !important;
+}
+
+.view-services-btn,
+.join-btn {
+    margin-top: 15px;
+}
+
+.small-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.account-actions {
+    position: absolute;
+    top: 80px;
+    left: 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#logout-btn {
+    margin: 0;
+}
+
+.account-actions .bx-cog {
+    font-size: 22px;
+}
+
+#dashboard-view .account-actions .btn {
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#show-dashboard {
+    transform: translateY(50px);
+}
+
+.sound-toggle {
+    position: absolute;
+    top: 80px;
+    right: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+/* QUEUE STATUS CONTAINER */
+
+.status-info p {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+/* SERVICES CONTAINER */
+
+.services-link-card p {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+/* UPDATES CONTAINER */
 
 .updates-card {
     grid-column: 2;
     grid-row: 1 / 3;
-}
-
-/* Specific Card Styling */
-
-.status-info p,
-.services-link-card p {
-    font-size: 18px;
-    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .notify-options {
@@ -80,7 +167,11 @@
 .notification-list {
     list-style: none;
     height: 330px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    margin-bottom: 15px;
+    padding-right: 5px;
 }
 
 .notification-list li {
@@ -90,7 +181,13 @@
     gap: 10px;
 }
 
-/* Notification Popup */
+.clear-updates-btn {
+    flex-shrink: 0;
+    margin-top: auto;
+    align-self: flex-start;
+}
+
+/* NOTIFICATION POPUP */
 
 .notification-popup {
     position: fixed;
@@ -145,21 +242,18 @@
     color: #ddd;
 }
 
-/* History Table */
+/* HISTORY TABLE */
 
 .history-card {
     grid-column: span 2;
-}
-
-.history-card {
-    max-height: 300px;
+    max-height: 295px;
     overflow-y: auto;
 }
 
 .history-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
+    margin-top: -12px;
 }
 
 .history-table th,
@@ -170,50 +264,12 @@
 }
 
 .history-table th {
-    background: #263449;
+    background: transparent;
 }
 
-/* Dashboard Buttons */
-
-.dashboard-wrapper .btn {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    height: auto !important;
-    width: auto !important;
-    text-decoration: underline;
-    color: #fff !important;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 400;
-}
-
-.dashboard-wrapper .btn:hover {
-    color: #3b82f6 !important;
-}
-
-.leave-btn {
-    color: #ff4d4d !important;
-    margin-top: 15px;
-}
-
-.leave-btn:hover {
-    color: #ff1a1a !important;
-}
-
-.view-services-btn,
-.join-btn {
-    margin-top: 15px;
-}
-
-.small-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-/* Services View */
+/* ==========================================
+   SERVICES PAGE
+========================================== */
 
 .services-header {
     display: flex;
@@ -246,7 +302,6 @@
     margin-bottom: 5px;
 }
 
-/* Allow the Services page to scroll when many services exist */
 #services-view {
     height: 100vh;
     overflow-y: auto;
@@ -254,54 +309,37 @@
     box-sizing: border-box;
 }
 
-/* Keep the bottom of the services list from being cut off */
 #services-view .services-grid {
     padding-bottom: 30px;
 }
 
-.dashboard-wrapper {
-    position: relative;
-}
+/* ==========================================
+   ACCOUNT SETTINGS PAGE
+========================================== */
 
-.account-actions {
+#dashboard-view .settings-btn {
     position: absolute;
-    top: 80px;
-    left: 40px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+    top: 0px;
+    left: 60px;
 
-#logout-btn {
-    margin: 0;
-}
-
-.sound-toggle {
-    position: absolute;
-    top: 80px;
-    right: 40px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
+
+    color: #fff;
+    text-decoration: none !important;
+    font-size: 16px;
+    font-weight: 500;
     cursor: pointer;
 }
 
-#show-dashboard {
-    transform: translateY(50px);
+#dashboard-view .settings-btn span {
+    text-decoration: underline;
 }
 
-.account-actions .bx-cog {
-    font-size: 22px;
+#dashboard-view .settings-btn:hover {
+    color: #3b82f6 !important;
 }
-
-#dashboard-view .account-actions .btn {
-    width: auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Account Settings */
 
 #profile-form {
     display: flex;
@@ -333,32 +371,6 @@
 #profile-form button {
     align-self: flex-start;
     margin-top: 20px;
-}
-
-/* Settings Button */
-
-#dashboard-view .settings-btn {
-    position: absolute;
-    top: 0px;
-    left: 60px;
-
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-
-    color: #fff;
-    text-decoration: none !important;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-#dashboard-view .settings-btn span {
-    text-decoration: underline;
-}
-
-#dashboard-view .settings-btn:hover {
-    color: #3b82f6 !important;
 }
 
 #profile-back-btn {

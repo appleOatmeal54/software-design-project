@@ -61,10 +61,10 @@
                 <div class="remember-forgot">
 
                     <label>
-                        <input type="checkbox"> Remember me
+                        <input type="checkbox" id="remember-me"> Remember me
                     </label>
 
-                    <a href="#">Forgot password?</a>
+                    <a href="#" id="show-forgot-password">Forgot password?</a>
 
                 </div>
 
@@ -76,6 +76,39 @@
 
             </form>
 
+
+            <!-- PASSWORD RECOVERY -->
+            <form action="" id="forgot-password-form">
+                <h1>Reset Password</h1>
+
+                <p class="recovery-description">
+                    Enter your account email and choose a new password.
+                    This demo does not send an email.
+                </p>
+
+                <div class="input-box">
+                    <input type="email" id="recovery-email" name="email" placeholder="Account Email" autocomplete="email" maxlength="254" required>
+                    <i class="bx bxs-user"></i>
+                </div>
+
+                <div class="input-box">
+                    <input type="password" id="recovery-password" name="new-password" placeholder="New Password" autocomplete="new-password" minlength="8" maxlength="20" required>
+                    <i class="bx bxs-lock"></i>
+                </div>
+
+                <div class="input-box">
+                    <input type="password" id="recovery-confirm-password" name="confirm-password" placeholder="Confirm New Password" autocomplete="new-password" minlength="8" maxlength="20" required>
+                    <i class="bx bxs-lock"></i>
+                </div>
+
+                <div class="form-error" id="recovery-error" aria-live="polite"></div>
+
+                <button type="submit" class="btn">Reset Password</button>
+
+                <div class="register-link">
+                    <p>Remembered your password? <a href="#" id="back-to-login">Login</a></p>
+                </div>
+            </form>
 
             <!-- REGISTER -->
             <form action="" id="register-form">
@@ -116,13 +149,90 @@
 
     </div>
 
+    <div class="login-toast" id="login-toast" role="status" aria-live="polite"></div>
+
     <!--Flips the login and register form so we don't need multiple html pages.-->
     <script>
         const loginForm = document.getElementById("login-form");
         const registerForm = document.getElementById("register-form");
+        const forgotPasswordForm = document.getElementById("forgot-password-form");
 
         const showRegister = document.getElementById("show-register");
         const showLogin = document.getElementById("show-login");
+        const showForgotPassword = document.getElementById("show-forgot-password");
+        const backToLogin = document.getElementById("back-to-login");
+
+        // Display success notification
+        function showToast(message) {
+            const toast = document.getElementById("login-toast");
+
+            toast.textContent = message;
+            toast.classList.add("show");
+
+            clearTimeout(window.loginToastTimer);
+
+            window.loginToastTimer = setTimeout(() => {
+                toast.classList.remove("show");
+            }, 3000);
+        }
+
+        function showOnlyForm(formToShow) {
+            [loginForm, registerForm, forgotPasswordForm].forEach(form => {
+                form.style.display = form === formToShow ? "block" : "none";
+            });
+        }
+
+        showForgotPassword.addEventListener("click", function(event) {
+            event.preventDefault();
+            document.getElementById("recovery-email").value = document.getElementById("email").value.trim();
+            document.getElementById("recovery-error").textContent = "";
+            showOnlyForm(forgotPasswordForm);
+        });
+
+        backToLogin.addEventListener("click", function(event) {
+            event.preventDefault();
+            showOnlyForm(loginForm);
+        });
+
+        forgotPasswordForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const email = document.getElementById("recovery-email").value.trim();
+            const password = document.getElementById("recovery-password").value;
+            const confirmPassword = document.getElementById("recovery-confirm-password").value;
+            const recoveryError = document.getElementById("recovery-error");
+
+            recoveryError.textContent = "";
+
+            if (password !== confirmPassword) {
+                recoveryError.textContent = "Passwords do not match.";
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/demo-reset-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, new_password: password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    recoveryError.textContent = data.message || "Unable to reset password.";
+                    return;
+                }
+
+                forgotPasswordForm.reset();
+                document.getElementById("email").value = email;
+                showOnlyForm(loginForm);
+                showToast("Password changed successfully");
+
+            } catch (error) {
+                console.error("Password reset error:", error);
+                recoveryError.textContent = "Unable to connect to the server. Please try again.";
+            }
+        });
         
         registerForm.addEventListener("submit", async function(event) {
             event.preventDefault();
@@ -171,7 +281,7 @@
                 }
 
                 // Notify the user that registration was successful
-                alert(data.message);
+                showToast("User registered successfully");
 
                 // Switch back to the login form
                 registerForm.reset();
@@ -195,17 +305,14 @@
         showRegister.addEventListener("click", function(event) {
             event.preventDefault();
 
-            loginForm.style.display = "none";
-            registerForm.style.display = "block";
+            showOnlyForm(registerForm);
         });
 
         showLogin.addEventListener("click", function(event) {
             event.preventDefault();
 
-            registerForm.style.display = "none";
-            loginForm.style.display = "block";
+            showOnlyForm(loginForm);
         });
-
 
         // Login API: send the user's credentials to the backend
         loginForm.addEventListener("submit", async function(event) {
@@ -216,6 +323,7 @@
             // Get the email and password entered in the login form
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
+            const rememberMe = document.getElementById("remember-me").checked;
 
             try {
                 // Send the login information to our backend
@@ -226,7 +334,8 @@
                     },
                     body: JSON.stringify({
                         email: email,
-                        password: password
+                        password: password,
+                        rememberMe: rememberMe
                     })
                 });
 
@@ -239,9 +348,17 @@
                     return;
                 }
 
-                // Store the authentication token for the current browser tab
-                sessionStorage.setItem("token", data.token);
-
+                // Remove previous login tokens
+                sessionStorage.removeItem("token");
+                localStorage.removeItem("token");
+                
+                // Save token depending on Remember Me
+                if (rememberMe) {
+                    localStorage.setItem("token", data.token);
+                } else {
+                    sessionStorage.setItem("token", data.token);
+                }
+                
                 // Redirect the user based on their account role
                 if (data.user.role === "admin") {
                     window.location.href = "/administrator.html";
@@ -255,9 +372,45 @@
                 alert("Unable to complete login. Please try again.");
             }
         });
+ 
+        // Check whether the user already has a saved login
+        async function checkExistingLogin() {
+            const token = localStorage.getItem("token");
 
+            // No Remember Me token exists
+            if (!token) return;
+
+            try {
+                const response = await fetch("/api/me", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                // Remove an invalid or expired token
+                if (!response.ok) {
+                    localStorage.removeItem("token");
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Redirect based on the user's account role
+                if (data.user.role === "admin") {
+                    window.location.replace("/administrator.html");
+                } else {
+                    window.location.replace("/dashboard.html");
+                }
+
+            } catch (error) {
+                console.error("Existing login check failed:", error);
+            }
+        }
+
+        // Run the login check when the page opens
+        checkExistingLogin();
+    
     </script>
 
 </body>
-
 </html>

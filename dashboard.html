@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,39 +9,42 @@
     <link rel="stylesheet" href="dashboard.css">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 </head>
+
 <body>
+    <!-- ==========================================
+         NOTIFICATION POPUP
+    =========================================== -->
 
-    <!-- NOTIFICATION POPUP -->
-<div class="notification-popup" id="notification-popup">
-    <i class='bx bx-bell'></i>
-
-    <div class="notification-popup-content">
-        <div class="notification-popup-title" id="notification-title">
-            Queue Update
-        </div>
-
-        <div class="notification-popup-message" id="notification-message">
-            Your queue has been updated.
+    <div class="notification-popup" id="notification-popup">
+        <i class='bx bx-bell'></i>
+        <div class="notification-popup-content">
+            <div class="notification-popup-title" id="notification-title">
+                Queue Update
+            </div>
+            <div class="notification-popup-message" id="notification-message">
+                Your queue has been updated.
+            </div>
         </div>
     </div>
-</div>
 
     <div class="dashboard-container">
 
-        <!-- DASHBOARD VIEW -->
+        <!-- ==========================================
+             MAIN DASHBOARD
+        =========================================== -->
+
         <div class="dashboard-wrapper" id="dashboard-view">
-            
-        <h1>Queue<span>Smart</span> User Dashboard</h1>
 
-        <div class="account-actions">
-            <button type="button" class="btn" id="logout-btn">
-                Logout
-            </button>
+            <h1>Queue<span>Smart</span> User Dashboard</h1>
 
-            <button type="button" class="btn settings-btn" id="account-settings-btn">
-                <span>Account</span>
-            </button>
-        </div>
+            <div class="account-actions">
+                <button type="button" class="btn" id="logout-btn">
+                    Logout
+                </button>
+                <button type="button" class="btn settings-btn" id="account-settings-btn">
+                    <span>Account</span>
+                </button>
+            </div>
 
             <label class="sound-toggle">
                 <input type="checkbox" id="mute-sound-checkbox">
@@ -48,6 +52,7 @@
             </label>
 
             <div class="dashboard-grid">
+
                 <!-- Queue Status Card -->
                 <div class="glass-card status-card">
                     <h3>Queue Status</h3>
@@ -55,32 +60,45 @@
                         <p>Position in queue: <strong>--</strong></p>
                         <p>ETA time: <strong>--</strong></p>
                     </div>
+
+                    <!-- Notification Options -->
                     <div class="notify-options">
-                        <label><input type="checkbox"> Notify by Phone</label>
-                        <label><input type="checkbox"> Notify by Email</label>
+                        <label>
+                            <input type="checkbox">
+                            Notify by Phone
+                        </label>
+                        <label>
+                            <input type="checkbox">
+                            Notify by Email
+                        </label>
                     </div>
+
+                    <!-- Leave Queue Button -->
                     <button class="btn leave-btn" id="leave-queue-btn" onclick="leaveQueue()" disabled>
                         Leave Queue
                     </button>
                 </div>
 
                 <!-- Updates Card -->
-				<div class="glass-card updates-card">
-					<h3>Updates</h3>
-
-					<ul class="notification-list" id="notification-list">
+                <div class="glass-card updates-card">
+                    <h3>Updates</h3>
+                    <ul class="notification-list" id="notification-list">
                     </ul>
-
-					<button class="btn clear-updates-btn" onclick="clearUpdates()">
+                    <button class="btn clear-updates-btn" onclick="clearUpdates()">
                         Clear Updates
-					</button>
-				</div>
+                    </button>
+                </div>
 
                 <!-- Services Card -->
                 <div class="glass-card services-link-card">
                     <h3>Services</h3>
-                    <p>Services Available: <strong id="services-count">0</strong></p>
-                    <button class="btn view-services-btn" id="show-services">View Services</button>
+                    <p>
+                        Services Available:
+                        <strong id="services-count">0</strong>
+                    </p>
+                    <button class="btn view-services-btn" id="show-services">
+                        View Services
+                    </button>
                 </div>
 
                 <!-- History Card -->
@@ -101,59 +119,73 @@
                         </tbody>
                     </table>
                 </div>
-
             </div>
         </div>
 
-        <!-- SERVICES VIEW (Hidden by default) -->
+        <!-- ==========================================
+             SERVICES LIST
+        =========================================== -->
+
         <div class="dashboard-wrapper" id="services-view" style="display: none;">
+
+            <!-- Services Header -->
             <div class="services-header">
-                <button class="btn small-btn" id="show-dashboard"><i class='bx bx-arrow-back'></i> Go Back</button>
+                <button class="btn small-btn" id="show-dashboard">
+                    <i class='bx bx-arrow-back'></i>
+                    Go Back
+                </button>
                 <h1>Queue<span>Smart</span> Services</h1>
             </div>
-            
-            <p class="subtitle">Same day appointments - Select one to join</p>
 
+            <!-- Services Subtitle -->
+            <p class="subtitle">
+                Same day appointments - Select one to join
+            </p>
+
+            <!-- Services Grid -->
             <div class="services-grid" id="services-grid">
-                <!-- Services will be loaded dynamically from the database. -->
             </div>
         </div>
 
-        <!-- ACCOUNT SETTINGS VIEW -->
-        <div class="dashboard-wrapper" id="account-settings-view" style="display: none;">
+        <!-- ==========================================
+            ACCOUNT SETTINGS
+        =========================================== -->
 
+        <div class="dashboard-wrapper" id="account-settings-view" style="display: none;">
             <h1>Your Queue<span>Smart</span> Account</h1>
 
+            <!-- Back Button -->
             <button type="button" class="btn small-btn" id="profile-back-btn">
-                <i class="bx bx-arrow-back"></i> Go Back
+                <i class="bx bx-arrow-back"></i>
+                Go Back
             </button>
+
+            <!-- Edit Profile Section -->
 
             <div class="glass-card">
                 <h3>Edit Profile</h3>
-
                 <form id="profile-form">
+
+                    <!-- Full Name -->
                     <label for="full-name">Full Name</label>
                     <input type="text" id="full-name" required maxlength="100">
 
+                    <!-- Email -->
                     <label for="email">Email</label>
                     <input type="email" id="email" disabled>
 
+                    <!-- Phone Number -->
                     <label for="phone">Phone Number</label>
-                    <input
-                        type="tel"
-                        id="phone"
-                        pattern="[0-9]{10}"
-                        maxlength="10"
-                        minlength="10"
-                        placeholder="Enter 10-digit phone number"
-                    >
+                    <input type="tel" id="phone" pattern="[0-9]{10}" maxlength="10" minlength="10" placeholder="Enter 10-digit phone number">
+                   
+                    <!-- Save Changes Button -->
+                    <button type="submit" class="btn">
+                        Save Changes
+                    </button>
 
-                    <button type="submit" class="btn">Save Changes</button>
                 </form>
-
                 <p id="profile-message" role="status"></p>
             </div>
-
         </div>
     </div>
 
@@ -173,6 +205,7 @@
         let inQueue = false;
         let queueRefreshTimer = null;
         let notificationRefreshTimer = null;
+        let servicesCountRefreshTimer = null;
         let knownNotificationIds = new Set();
         let notificationsInitialized = false;
         let isLoadingNotifications = false;
@@ -220,8 +253,20 @@
         let previousQueuePosition = null;
         let isRefreshingQueue = false;
         
+        // Retrieve token from either storage location
+        function getAuthToken() {
+            return localStorage.getItem("token") ||
+                sessionStorage.getItem("token");
+        }
+
+        // Remove token from both storage locations
+        function clearAuthToken() {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+        }
+
         async function restoreExistingQueue() {
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             if (!token) return;
 
@@ -248,7 +293,7 @@
 
                     const position = queueData.queue.findIndex(
                         entry =>
-                            entry.userName.trim().toLowerCase() ===
+                            (entry.email || "").trim().toLowerCase() ===
                             currentUserName.trim().toLowerCase()
                     );
 
@@ -286,6 +331,28 @@
             }
         }
 
+        async function updateServicesCount() {
+            try {
+                const response = await fetch("/services");
+
+                if (!response.ok) {
+                    throw new Error("Unable to load services.");
+                }
+
+                const services = await response.json();
+
+                const openServices = services.filter(
+                    service => service.status === "Open"
+                );
+
+                document.getElementById("services-count").textContent =
+                    openServices.length;
+
+            } catch (error) {
+                console.error("Unable to update service count:", error);
+            }
+        }
+
         async function refreshServicesPage() {
             try {
                 const response = await fetch("/services");
@@ -298,7 +365,7 @@
                 const servicesGrid = document.getElementById("services-grid");
 
                 document.getElementById("services-count").textContent =
-                    services.length;
+                    services.filter(service => service.status === "Open").length;
 
                 // Check whether the displayed services need to be rebuilt.
                 const currentIds = Array.from(
@@ -381,7 +448,7 @@
         async function leaveQueue() {
             if (!inQueue) return;
 
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             try {
                 const response = await fetch("/queue/leave", {
@@ -434,7 +501,7 @@
                 return;
             }
 
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             try {
                 const response = await fetch("/queue/join", {
@@ -495,7 +562,7 @@
 
             isRefreshingQueue = true;
 
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             try {
                 // Fetch the latest, sorted queue from the backend
@@ -509,6 +576,59 @@
                 );
 
                 if (!response.ok) {
+
+                    // A 404 means the service or its queue was deleted.
+                    if (response.status === 404) {
+
+                        const endedServiceName = currentQueueName;
+                        const token = getAuthToken();
+
+                        try {
+                            const notificationResponse = await fetch("/notifications", {
+                                headers: {
+                                    Authorization: `Bearer ${token}`
+                                }
+                            });
+
+                            if (notificationResponse.ok) {
+                                const notificationData =
+                                    await notificationResponse.json();
+
+                                // Find the removal notification for this service.
+                                const removalNotification =
+                                    notificationData.notifications.find(notification =>
+                                        notification.type === "admin_removed" &&
+                                        notification.message ===
+                                            `${endedServiceName} removed you`
+                                    );
+
+                                if (removalNotification) {
+
+                                    inQueue = false;
+                                    previousQueuePosition = null;
+                                    currentServiceId = null;
+                                    currentQueueName = "";
+
+                                    document.getElementById("leave-queue-btn").disabled = true;
+
+                                    document.querySelector(".status-info").innerHTML =
+                                        "<p>You have been removed</p>";
+
+                                    // Show the popup and add the update.
+                                    await loadNotifications();
+
+                                    return;
+                                }
+                            }
+
+                        } catch (error) {
+                            console.error(
+                                "Could not check queue deletion notification:",
+                                error
+                            );
+                        }
+                    }
+
                     throw new Error("Unable to refresh queue.");
                 }
 
@@ -517,7 +637,7 @@
                 // Find the current user in the updated queue
                 const position = data.queue.findIndex(
                     entry =>
-                        entry.userName.trim().toLowerCase() ===
+                        (entry.email || "").trim().toLowerCase() ===
                         currentUserName.trim().toLowerCase()
                 );
 
@@ -525,7 +645,7 @@
                 if (position === -1) {
                     const endedServiceName = currentQueueName;
                     const endedServiceId = String(currentServiceId);
-                    const token = sessionStorage.getItem("token");
+                    const token = getAuthToken();
 
                     inQueue = false;
                     previousQueuePosition = null;
@@ -685,7 +805,7 @@
             // Prevent overlapping requests from processing notifications twice.
             if (isLoadingNotifications) return;
 
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             if (!token) return;
 
@@ -746,7 +866,7 @@
         }
         
         async function loadHistory() {
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
             const tableBody = document.getElementById("history-table-body");
 
             if (!token) return;
@@ -802,7 +922,7 @@
 
         // Load the user's profile information
         async function loadProfile() {
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             if (!token) {
                 window.location.replace("/Login.html");
@@ -844,7 +964,7 @@
         document.getElementById("profile-form").addEventListener("submit", async function(event) {
             event.preventDefault();
 
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             const full_name = document.getElementById("full-name").value;
             const phone = document.getElementById("phone").value;
@@ -902,6 +1022,17 @@
                 loadNotifications();
             }, 1000);
 
+            // Refresh the number of open services every second
+            if (servicesCountRefreshTimer) {
+                clearInterval(servicesCountRefreshTimer);
+            }
+
+            updateServicesCount();
+
+            servicesCountRefreshTimer = setInterval(() => {
+                updateServicesCount();
+            }, 1000);
+
             // Refresh history every second
             setInterval(() => {
                 loadHistory();
@@ -916,7 +1047,7 @@
         }
 
         async function clearUpdates() {
-            const token = sessionStorage.getItem("token");
+            const token = getAuthToken();
 
             if (!token) {
                 showNotification("Error", "Please log in again.");
@@ -954,7 +1085,7 @@
     async function checkUserAccess() {
 
         // Retrieve the authentication token saved during login
-        const token = sessionStorage.getItem("token");
+        const token = getAuthToken();
 
         // Redirect to login if no token exists
         if (!token) {
@@ -972,7 +1103,7 @@
 
             // Redirect if the token is invalid or expired
             if (!response.ok) {
-                sessionStorage.removeItem("token");
+                clearAuthToken();
                 window.location.replace("/Login.html");
                 return;
             }
@@ -1003,7 +1134,7 @@
     // Verify the user's authentication when the page loads
     checkUserAccess().then(async () => {
         if (
-            sessionStorage.getItem("token") &&
+            getAuthToken() &&
             currentUserName !== "Student User"
         ) {
             // Load the service count immediately after login
@@ -1014,7 +1145,7 @@
                     const services = await response.json();
 
                     document.getElementById("services-count").textContent =
-                        services.length;
+                        services.filter(service => service.status === "Open").length;
                 }
             } catch (error) {
                 console.error("Unable to load service count:", error);
@@ -1033,12 +1164,11 @@
     document.getElementById("logout-btn").addEventListener("click", function() {
 
         // Remove the authentication token stored during login
-        sessionStorage.removeItem("token");
+        clearAuthToken();
 
         // Redirect the user back to the login page
         window.location.replace("/Login.html");
     });
-
 
     </script>
 </body>

@@ -14,11 +14,19 @@
     <div class="dashboard-wrapper admin-wrapper">
         <h1>Queue<span>Smart</span> Admin</h1>
 
+        <!-- ADMIN NAVIGATION -->
         <div class="admin-nav">
             <button data-view="dashboard-view" class="active">Dashboard</button>
             <button data-view="service-view">Services</button>
             <button data-view="queue-view">Queues</button>
-            <button type="button" id="logout-btn">Logout</button>
+        </div>
+
+        <!-- ADMIN LOGOUT -->
+        <div class="admin-logout-row">
+            <button type="button" class="btn small-btn" id="logout-btn">
+                <i class="bx bx-arrow-back"></i>
+                Logout
+            </button>
         </div>
 
         <!-- ADMIN DASHBOARD -->
@@ -65,18 +73,27 @@
                             </select>
                         </div>
                         <div class="form-actions">
-                            <button type="submit" class="action-btn big" id="save-btn">Create service</button>
+                            <button type="submit" class="action-btn big" id="save-btn">Create</button>
                             <button type="button" class="action-btn big ghost" id="cancel-btn">Clear</button>
                         </div>
                     </form>
                 </div>
 
-                <div class="glass-card">
+                <div class="glass-card existing-services-card">
                     <h3>Existing Services</h3>
-                    <table class="admin-table">
-                        <thead><tr><th>Name</th><th>Min</th><th></th></tr></thead>
-                        <tbody id="svc-body"></tbody>
-                    </table>
+
+                    <div class="existing-services-list">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Min</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="svc-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -87,7 +104,7 @@
                 <h3>Queue Management</h3>
                 <div class="toolbar">
                     <select id="queue-select" aria-label="Select service"></select>
-                    <button class="action-btn big" id="serve-btn">Serve next user</button>
+                    <button class="action-btn big" id="serve-btn">Serve</button>
                 </div>
                 <p id="serving" class="subtitle" style="margin:0 0 10px;text-align:left"></p>
                 <ul class="queue-list" id="queue-list"></ul>
@@ -95,7 +112,37 @@
         </div>
     </div>
 </div>
+
 <div class="toast" id="toast"></div>
+
+<div class="delete-modal" id="delete-modal" aria-hidden="true">
+    <div class="delete-modal-content">
+        <div class="delete-modal-icon">
+            <i class="bx bx-trash"></i>
+        </div>
+
+        <h2>Delete Service?</h2>
+
+        <p>
+            Are you sure you want to permanently delete
+            <strong id="delete-service-name"></strong>?
+        </p>
+
+        <p class="delete-warning">
+            This will also remove its active queue and waiting users.
+        </p>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="action-btn ghost" id="cancel-delete">
+                Cancel
+            </button>
+
+            <button type="button" class="action-btn danger" id="confirm-delete">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
     // Services are loaded from the SQLite database.
@@ -103,6 +150,18 @@
     let nextId = 1;
     let editingId = null;
     let selectedId = null;
+
+    // Retrieve token from either storage location
+    function getAuthToken() {
+        return localStorage.getItem("token") ||
+            sessionStorage.getItem("token");
+    }
+
+    // Remove token from both storage locations
+    function clearAuthToken() {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
+    }
 
     // shortcuts to simplify code
     // getElement == document.getElementById
@@ -137,8 +196,8 @@
                 <td>${s.queue.length}</td>
                 <td><span class="badge ${s.open ? "open" : "closed"}">${s.open ? "Open" : "Closed"}</span></td>
                 <td class="row-actions">
-                    <button class="action-btn ${s.open ? "danger" : ""}" onclick="toggleQueue(${s.id})">${s.open ? "Close queue" : "Open queue"}</button>
-                    <button class="action-btn ghost" onclick="manageQueue(${s.id})">View queue</button>
+                    <button class="action-btn ${s.open ? "danger" : ""}" onclick="toggleQueue(${s.id})">${s.open ? "Close" : "Open"}</button>
+                    <button class="action-btn ghost" onclick="manageQueue(${s.id})">View</button>
                 </td>
             </tr>`).join("") || `<tr><td colspan="5" class="empty">No services yet. Create one in the Services tab.</td></tr>`;
     }
@@ -180,8 +239,94 @@
             <tr>
                 <td>${esc(s.name)}</td>
                 <td>${s.duration}</td>
-                <td><button class="action-btn ghost" onclick="editService(${s.id})">Edit</button></td>
+                <td class="row-actions">
+                    <button class="action-btn ghost" onclick="editService(${s.id})">Edit</button>
+                    <button class="action-btn danger" onclick="deleteService(${s.id})">Delete</button>
+                </td>
             </tr>`).join("");
+    }
+
+    function showDeleteConfirmation(serviceName) {
+        const modal = getElement("delete-modal");
+
+        getElement("delete-service-name").textContent = serviceName;
+
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+
+        return new Promise(resolve => {
+            function closeModal(result) {
+                modal.classList.remove("show");
+                modal.setAttribute("aria-hidden", "true");
+
+                getElement("cancel-delete").removeEventListener("click", cancel);
+                getElement("confirm-delete").removeEventListener("click", confirm);
+                modal.removeEventListener("click", outsideClick);
+                document.removeEventListener("keydown", escapeKey);
+
+                resolve(result);
+            }
+
+            function cancel() {
+                closeModal(false);
+            }
+
+            function confirm() {
+                closeModal(true);
+            }
+
+            function outsideClick(event) {
+                if (event.target === modal) {
+                    closeModal(false);
+                }
+            }
+
+            function escapeKey(event) {
+                if (event.key === "Escape") {
+                    closeModal(false);
+                }
+            }
+
+            getElement("cancel-delete").addEventListener("click", cancel);
+            getElement("confirm-delete").addEventListener("click", confirm);
+            modal.addEventListener("click", outsideClick);
+            document.addEventListener("keydown", escapeKey);
+        });
+    }
+
+    async function deleteService(id) {
+        const service = services.find(s => String(s.id) === String(id));
+
+        if (!service) return;
+
+        const confirmed = await showDeleteConfirmation(service.name);
+
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/services/${id}`, {
+                method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast(data.error || "Could not delete service.");
+                return;
+            }
+
+            if (String(editingId) === String(id)) {
+                resetForm();
+            }
+
+            toast(`${service.name} deleted successfully`);
+
+            await loadFromBackend();
+
+        } catch (error) {
+            console.error("Error deleting service:", error);
+            toast("Network error. Could not delete service.");
+        }
     }
 
     function resetForm() {
@@ -189,7 +334,7 @@
         getElement("service-form").reset();
         getElement("name-count").textContent = 0;
         getElement("form-title").textContent = "Create Service";
-        getElement("save-btn").textContent = "Create service";
+        getElement("save-btn").textContent = "Create";
         ["name", "desc", "duration"].forEach(k => getElement("err-" + k).textContent = "");
     }
 
@@ -254,7 +399,7 @@
         getElement("queue-list").innerHTML = s.queue.length ? s.queue.map((u, i) => `
             <li>
                 <span class="pos">${i + 1}</span>
-                <span class="name">${esc(u)}</span>
+                <span class="name">${esc(u.userName)}</span>
                 <span class="wait-time" aria-label="Estimated wait time: ${estimateWaitTime(i + 1, s.duration)} minutes">${estimateWaitTime(i + 1, s.duration)} min</span>
                 <button class="action-btn danger" onclick="removeUser(${i})">Remove</button>
             </li>`).join("") : `<li class="empty">Nobody is waiting in this queue.</li>`;
@@ -273,7 +418,7 @@
         const svc = current();
         if (!svc || !svc.queue[i]) return;
 
-        const userName = svc.queue[i];
+        const user = svc.queue[i];
 
         try {
             const response = await fetch("/queue/leave", {
@@ -283,7 +428,7 @@
                 },
                 body: JSON.stringify({
                     serviceId: svc.id,
-                    userName: userName,
+                    userName: user.email,
                     action: "remove"
                 })
             });
@@ -295,7 +440,7 @@
                 return;
             }
 
-            toast(`${userName} removed from queue`);
+            toast(`${user.userName} removed from queue`);
             await loadFromBackend();
 
         } catch (error) {
@@ -366,7 +511,10 @@
                     open: s.status !== "Closed",
                     queue: backendQueues
                         .filter(q => String(q.serviceId) === String(s.id))
-                        .map(q => q.userName)
+                        .map(q => ({
+                            userName: q.userName,
+                            email: q.email
+                        }))
                 }));
             }
         } catch (err) {
@@ -387,7 +535,7 @@
     async function checkAdminAccess() {
 
         // Retrieve the token saved during login
-        const token = sessionStorage.getItem("token");
+        const token = getAuthToken();
 
         // Redirect users who haven't logged in
         if (!token) {
@@ -405,7 +553,7 @@
 
             // Redirect if the token is invalid or expired
             if (!response.ok) {
-                sessionStorage.removeItem("token");
+                clearAuthToken();
                 window.location.replace("/Login.html");
                 return;
             }
@@ -434,7 +582,7 @@
     document.getElementById("logout-btn").addEventListener("click", function() {
 
         // Remove the authentication token saved during login
-        sessionStorage.removeItem("token");
+        clearAuthToken();
 
         // Redirect the administrator to the login page
         window.location.replace("/Login.html");

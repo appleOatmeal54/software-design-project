@@ -1,9 +1,15 @@
-/* ADMIN SCREENS (A3) - builds on style.css + dashboard.css */
+/* ========================================
+   ADMIN PAGE LAYOUT
+======================================== */
 
 .admin-wrapper {
     width: 960px;
     max-width: 100%;
 }
+
+/* ========================================
+   ADMIN NAVIGATION
+======================================== */
 
 .admin-nav {
     display: flex;
@@ -14,65 +20,163 @@
 
 .admin-nav button {
     padding: 8px 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 40px;
-    border: 2px solid rgba(255, 255, 255, .2);
     background: transparent;
-    color: #fff;
+    color: white;
     font-size: 15px;
     cursor: pointer;
 }
 
 .admin-nav button.active {
-    background: #fff;
+    background: white;
     color: #333;
     font-weight: 600;
 }
 
-.admin-view { display: none; }
-.admin-view.active { display: block; }
+/* ========================================
+   ADMIN LOGOUT BUTTON
+======================================== */
 
-.admin-wrapper h2 {
-    font-size: 22px;
-    margin-bottom: 15px;
-    color: #3b82f6;
+.admin-logout-row {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: -10px;
+    margin-bottom: 12px;
 }
 
-/* Buttons (pill style, same as login) */
+/* ========================================
+   ADMIN VIEWS AND HEADINGS
+======================================== */
+
+.admin-view {
+    display: none;
+}
+
+.admin-view.active {
+    display: block;
+}
+
+#dashboard-view,
+#queue-view {
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: auto;
+    box-sizing: border-box;
+}
+
+.admin-wrapper h2 {
+    margin-bottom: 15px;
+    color: #3b82f6;
+    font-size: 22px;
+}
+
+
+/* ========================================
+   ACTION BUTTONS
+======================================== */
 
 .action-btn {
     height: 34px;
     padding: 0 16px;
-    border-radius: 40px;
     border: none;
-    background: #fff;
+    border-radius: 40px;
+    background: white;
     color: #333;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
 }
 
-.action-btn:hover { background: #dbeafe; }
-.action-btn.danger { background: #ff4d4d; color: #fff; }
-.action-btn.danger:hover { background: #ff1a1a; }
-.action-btn.ghost {
-    background: transparent;
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, .4);
+.action-btn:hover {
+    background: #dbeafe;
 }
-.action-btn.ghost:hover { border-color: #3b82f6; color: #3b82f6; }
-.action-btn.big { height: 45px; padding: 0 28px; font-size: 16px; }
 
-.row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Delete / dangerous actions */
+.action-btn.danger {
+    background: #ff4d4d;
+    color: white;
+}
 
-/* Table helpers */
+.action-btn.danger:hover {
+    background: #ff1a1a;
+}
 
-.admin-table { width: 100%; border-collapse: collapse; }
-.admin-table th, .admin-table td {
+/* Transparent / secondary actions */
+.action-btn.ghost {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: transparent;
+    color: white;
+}
+
+.action-btn.ghost:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+/* Larger buttons */
+.action-btn.big {
+    height: 45px;
+    padding: 0 28px;
+    font-size: 16px;
+}
+
+/* Buttons displayed beside each other */
+.row-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* ========================================
+   TABLES
+======================================== */
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: -12px;
+    background: transparent;
+}
+
+.admin-table th,
+.admin-table td {
     text-align: left;
     padding: 10px;
+    border: none;
+    background: transparent;
+}
+
+.admin-table tbody tr {
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.admin-table th {
+    background: transparent !important;
+    color: white;
+}
+
+.admin-table th:nth-child(3),
+.admin-table td:nth-child(3) {
+    text-align: center;
+}
+
+.admin-table td:nth-child(3) .row-actions {
+    justify-content: center;
+}
+
+.existing-services-card {
+    height: 600px;
+    min-height: 0;
+    max-height: 600px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Table status badges */
 .badge {
     display: inline-block;
     padding: 2px 12px;
@@ -80,23 +184,55 @@
     font-size: 13px;
     font-weight: 600;
 }
-.badge.open { background: rgba(74, 222, 128, .2); color: #4ade80; }
-.badge.closed { background: rgba(255, 77, 77, .2); color: #ff6b6b; }
-.badge.low { background: rgba(255, 255, 255, .15); }
-.badge.medium { background: rgba(250, 204, 21, .2); color: #facc15; }
-.badge.high { background: rgba(255, 77, 77, .2); color: #ff6b6b; }
+
+.badge.open {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.badge.closed {
+    background: rgba(255, 77, 77, 0.2);
+    color: #ff6b6b;
+}
+
+.badge.low {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.badge.medium {
+    background: rgba(250, 204, 21, 0.2);
+    color: #facc15;
+}
+
+.badge.high {
+    background: rgba(255, 77, 77, 0.2);
+    color: #ff6b6b;
+}
+
+/* ========================================
+   TOOLBAR
+======================================== */
 
 .toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
     gap: 15px;
+    margin-bottom: 15px;
 }
 
-/* Form */
+.toolbar select {
+    width: auto;
+    min-width: 260px;
+}
 
-.field { margin-bottom: 20px; }
+/* ========================================
+   FORMS AND INPUT FIELDS
+======================================== */
+
+.field {
+    margin-bottom: 20px;
+}
 
 .field label {
     display: block;
@@ -104,36 +240,68 @@
     font-size: 15px;
 }
 
-.field label .req { color: #ff6b6b; }
+.field label .req {
+    color: #ff6b6b;
+}
 
 .field input,
 .field textarea,
 .field select,
 .toolbar select {
     width: 100%;
-    background: transparent;
-    border: 2px solid rgba(255, 255, 255, .2);
+    padding: 10px 15px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
     outline: none;
-    color: #fff;
+    background: transparent;
+    color: white;
     font-size: 16px;
-    padding: 10px 15px;
 }
 
-.toolbar select { width: auto; min-width: 260px; }
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+    border-color: #3b82f6;
+}
 
-.field textarea { resize: vertical; min-height: 90px; }
-.field input:focus, .field textarea:focus, .field select:focus { border-color: #3b82f6; }
-.field select option, .toolbar select option { color: #333; }
+.field select option,
+.toolbar select option {
+    color: #333;
+}
 
-.field .hint { font-size: 13px; color: #ddd; margin-top: 4px; }
-.field .error { font-size: 13px; color: #ff6b6b; margin-top: 4px; min-height: 16px; }
+.field textarea {
+    min-height: 90px;
+    resize: vertical;
+}
 
-.form-actions { display: flex; gap: 12px; margin-top: 10px; }
+/* Form hints and validation messages */
+.field .hint {
+    margin-top: 4px;
+    color: #ddd;
+    font-size: 13px;
+}
 
-/* Queue list */
+.field .error {
+    min-height: 16px;
+    margin-top: 4px;
+    color: #ff6b6b;
+    font-size: 13px;
+}
 
-.queue-list { list-style: none; }
+/* Form buttons */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* ========================================
+   QUEUE LIST
+======================================== */
+
+.queue-list {
+    list-style: none;
+}
 
 .queue-list li {
     display: flex;
@@ -143,31 +311,148 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.queue-list .pos { width: 28px; font-weight: 600; color: #3b82f6; }
-.queue-list .name { flex: 1; }
-/* shows wait time (ie: 30 minutes, 60 minutes...) left of the up arrow on queues tab */
-.queue-list .wait-time { min-width: 72px; color: #ddd; font-size: 14px; text-align: right; white-space: nowrap; }
-.queue-list li:first-child .name { font-weight: 600; }
+.queue-list .pos {
+    width: 28px;
+    color: #3b82f6;
+    font-weight: 600;
+}
 
-.empty { text-align: center; padding: 25px; font-style: italic; color: #ddd; }
+.queue-list .name {
+    flex: 1;
+}
+
+.queue-list li:first-child .name {
+    font-weight: 600;
+}
+
+/* Estimated waiting time */
+.queue-list .wait-time {
+    min-width: 72px;
+    color: #ddd;
+    font-size: 14px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* ========================================
+   EMPTY STATES
+======================================== */
+
+.empty {
+    padding: 25px;
+    color: #ddd;
+    font-style: italic;
+    text-align: center;
+}
+
+/* ========================================
+   TOAST NOTIFICATIONS
+======================================== */
 
 .toast {
     position: fixed;
     bottom: 25px;
     left: 50%;
     transform: translateX(-50%);
-    background: #fff;
-    color: #333;
     padding: 10px 24px;
     border-radius: 40px;
+    background: white;
+    color: #333;
     font-weight: 600;
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s;
+    transition: opacity 0.2s;
 }
-.toast.show { opacity: 1; }
+
+.toast.show {
+    opacity: 1;
+}
+
+/* ========================================
+   DELETE CONFIRMATION POPUP
+======================================== */
+
+.delete-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    z-index: 2000;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.delete-modal.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.delete-modal-content {
+    width: 100%;
+    max-width: 420px;
+    padding: 30px;
+    text-align: center;
+
+    background: rgba(25, 30, 45, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+
+    transform: scale(0.95);
+    transition: transform 0.25s ease;
+}
+
+.delete-modal.show .delete-modal-content {
+    transform: scale(1);
+}
+
+.delete-modal-icon {
+    font-size: 42px;
+    color: #ff4d4d;
+    margin-bottom: 12px;
+}
+
+.delete-modal-content h2 {
+    color: white;
+    margin-bottom: 15px;
+}
+
+.delete-modal-content p {
+    color: #ddd;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.delete-modal-content strong {
+    color: white;
+}
+
+.delete-modal-content .delete-warning {
+    color: #ff9999;
+    font-size: 14px;
+}
+
+.delete-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+/* ========================================
+   RESPONSIVE ADMIN LAYOUT
+======================================== */
 
 @media (max-width: 700px) {
-    .dashboard-grid { grid-template-columns: 1fr; }
-    .admin-table { display: block; overflow-x: auto; }
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
 }
