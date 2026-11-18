@@ -140,9 +140,61 @@ function updateService(serviceId, updates) {
     return save();
 }
 
+function deleteService(serviceId) {
+    const existing = getServiceById(serviceId);
+
+    if (!existing) {
+        return false;
+    }
+
+    const remove = db.transaction(() => {
+        // Preserve historical notifications, but detach them
+        // from the service being deleted.
+        db.prepare(`
+            UPDATE NotificationHistory
+            SET service_id = NULL
+            WHERE service_id = ?
+        `).run(Number(serviceId));
+
+        // Preserve queue history as well.
+        db.prepare(`
+            UPDATE QueueHistory
+            SET service_id = NULL
+            WHERE service_id = ?
+        `).run(Number(serviceId));
+
+        // Delete active queue entries.
+        db.prepare(`
+            DELETE FROM QueueEntry
+            WHERE queue_id IN (
+                SELECT queue_id
+                FROM Queue
+                WHERE service_id = ?
+            )
+        `).run(Number(serviceId));
+
+        // Delete the associated queue.
+        db.prepare(`
+            DELETE FROM Queue
+            WHERE service_id = ?
+        `).run(Number(serviceId));
+
+        // Finally, delete the service.
+        db.prepare(`
+            DELETE FROM Service
+            WHERE service_id = ?
+        `).run(Number(serviceId));
+    });
+
+    remove();
+
+    return true;
+}
+
 module.exports = {
     getAllServices,
     getServiceById,
     createService,
-    updateService
+    updateService,
+    deleteService
 };

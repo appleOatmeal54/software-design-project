@@ -120,7 +120,7 @@ router.post("/register", async (req, res) => {
 // Login API
 router.post("/login", async (req, res) => {
 
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     // Check that both fields contain strings
     if (typeof email !== "string" || typeof password !== "string") {
@@ -129,22 +129,24 @@ router.post("/login", async (req, res) => {
         });
     }
 
-    // Find the account associated with the email
+    // Find the account
     const user = db.prepare(`
         SELECT user_id, email, password_hash, role
         FROM UserCredentials
         WHERE email = ?
-        `).get(email.trim().toLowerCase());
+    `).get(email.trim().toLowerCase());
 
-    // Reject nonexistent accounts
     if (!user) {
         return res.status(401).json({
             message: "Invalid email or password"
         });
     }
 
-    // Compare the entered password with the stored hashed password
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    // Check password
+    const passwordMatch = await bcrypt.compare(
+        password,
+        user.password_hash
+    );
 
     if (!passwordMatch) {
         return res.status(401).json({
@@ -152,14 +154,16 @@ router.post("/login", async (req, res) => {
         });
     }
 
-    // Generate a JWT valid for one hour
+    // Set token expiration
+    const tokenExpiry = rememberMe === true ? "30d" : "1h";
+
+    // Generate authentication token
     const token = jwt.sign(
         { id: user.user_id },
         JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: tokenExpiry }
     );
 
-    // Return the authentication token and user information
     res.status(200).json({
         message: "Login successful",
         token: token,
@@ -169,6 +173,46 @@ router.post("/login", async (req, res) => {
             role: user.role
         }
     });
+});
+
+// Reset a password
+router.post("/demo-reset-password", async (req, res) => {
+    const { email, new_password } = req.body;
+
+    if (typeof email !== "string" || typeof new_password !== "string") {
+        return res.status(400).json({ message: "Email and new password are required." });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    if (new_password.length < 8 || new_password.length > 20) {
+        return res.status(400).json({ message: "Password must be between 8 and 20 characters." });
+    }
+
+    const user = db.prepare(
+        "SELECT user_id FROM UserCredentials WHERE email = ?"
+    ).get(normalizedEmail);
+
+    if (!user) {
+        return res.status(404).json({ message: "No account was found with that email address." });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(new_password, 10);
+
+        db.prepare(
+            "UPDATE UserCredentials SET password_hash = ? WHERE user_id = ?"
+        ).run(hashedPassword, user.user_id);
+
+        return res.status(200).json({ message: "Password reset successfully." });
+    } catch (error) {
+        console.error("Demo password reset error:", error);
+        return res.status(500).json({ message: "Unable to reset password." });
+    }
 });
 
 // Export the router for use in server.js

@@ -99,6 +99,7 @@ function getQueueEntries(queueId) {
             e.queue_id AS queueId,
             e.user_id AS userId,
             up.full_name AS userName,
+            u.email AS email,
             e.position,
             e.priority,
             e.join_time AS joinedAt,

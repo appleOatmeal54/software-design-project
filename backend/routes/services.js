@@ -1,11 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const db = require("../database");
+const { addNotification } = require("../data/notificationData");
+const { addHistory } = require("../data/historyData");
 
 const {
     getAllServices,
     getServiceById,
     createService,
-    updateService
+    updateService,
+    deleteService
 } = require("../data/servicesData");
 
 const validPriorities = ["Low", "Medium", "High"];
@@ -191,6 +195,74 @@ router.put("/:id", (req, res) => {
         console.error("Error updating service:", error);
         return res.status(500).json({
             error: "Failed to update service."
+        });
+    }
+});
+
+// DELETE /services/:id - Permanently delete a service
+router.delete("/:id", (req, res) => {
+    try {
+        const serviceId = Number(req.params.id);
+
+        if (!Number.isInteger(serviceId) || serviceId <= 0) {
+            return res.status(400).json({
+                error: "Invalid service ID."
+            });
+        }
+
+        const existingService = getServiceById(serviceId);
+
+        if (!existingService) {
+            return res.status(404).json({
+                error: "Service not found."
+            });
+        }
+
+        // Find everyone currently waiting in this service's queue.
+        const waitingUsers = db.prepare(`
+            SELECT
+                u.email
+            FROM QueueEntry e
+            JOIN Queue q ON q.queue_id = e.queue_id
+            JOIN UserCredentials u ON u.user_id = e.user_id
+            WHERE q.service_id = ?
+              AND e.status = 'waiting'
+        `).all(serviceId);
+
+        // Notify each waiting user before deleting the service.
+        waitingUsers.forEach(user => {
+            // Record the removal in the user's history.
+            addHistory(
+                user.email,
+                existingService.name,
+                "Removed"
+            );
+
+            // Reuse the existing admin removal notification.
+            addNotification(
+                user.email,
+                "Service Incomplete",
+                `${existingService.name} removed you`,
+                {
+                    type: "admin_removed",
+                    serviceId: String(serviceId)
+                }
+            );
+        });
+
+        // Now permanently delete the service and its active queue.
+        deleteService(serviceId);
+
+        return res.status(200).json({
+            message: "Service deleted successfully.",
+            usersNotified: waitingUsers.length
+        });
+
+    } catch (error) {
+        console.error("Error deleting service:", error);
+
+        return res.status(500).json({
+            error: "Failed to delete service."
         });
     }
 });

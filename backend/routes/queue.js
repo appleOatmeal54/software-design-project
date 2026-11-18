@@ -107,6 +107,7 @@ router.get("/", (req, res) => {
                 e.queue_id AS queueId,
                 e.user_id AS userId,
                 up.full_name AS userName,
+                u.email AS email,
                 e.position,
                 e.priority,
                 e.join_time AS joinedAt,
@@ -394,9 +395,12 @@ router.post("/serve", (req, res) => {
         }
 
         const servedUser = db.prepare(`
-            SELECT email
-            FROM UserCredentials
-            WHERE user_id = ?
+            SELECT
+                u.email,
+                up.full_name AS fullName
+            FROM UserCredentials u
+            JOIN UserProfile up ON up.user_id = u.user_id
+            WHERE u.user_id = ?
         `).get(servedEntry.userId);
 
         if (!servedUser) {
@@ -425,7 +429,7 @@ router.post("/serve", (req, res) => {
                 : `You moved to ${getPositionText(newPosition)} position`;
 
             addNotification(
-                entry.userName,
+                entry.email,
                 "Queue Update",
                 message,
                 {
@@ -438,16 +442,18 @@ router.post("/serve", (req, res) => {
         });
 
         return res.status(200).json({
-            message: `Now serving ${servedUser.email}`,
+            message: `Now serving ${servedUser.fullName}`,
             servedUser: {
                 ...servedEntry,
                 serviceId: String(serviceId),
-                userName: servedUser.email
+                userName: servedUser.fullName,
+                email: servedUser.email
             },
             remainingInQueue: getWaitingCount(
                 getQueueByService(serviceId).queueId
             )
         });
+        
     } catch (error) {
         console.error("Error serving queue entry:", error);
         return res.status(500).json({ error: "Failed to serve queue entry." });
