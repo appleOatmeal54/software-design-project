@@ -313,7 +313,8 @@
 }
 
 #services-view {
-    height: 100vh;
+    height: auto;
+    max-height: calc(100vh - 100px);
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -352,6 +353,10 @@
 
 #dashboard-view .settings-btn:hover {
     color: #3b82f6 !important;
+}
+
+#account-settings-view {
+    padding-bottom: 40px;
 }
 
 #profile-form {

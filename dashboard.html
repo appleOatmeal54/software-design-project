@@ -793,18 +793,6 @@
             }, 4000);
             
         }
-
-        // Adds notifications to the Updates section
-        function addUpdate(message) {
-            const notificationList = document.getElementById("notification-list");
-            const update = document.createElement("li");
-
-            update.innerHTML =
-                "<i class='bx bx-log-in-circle'></i>" +
-                message;
-
-            notificationList.prepend(update);
-        }
         
         async function loadNotifications() {
             // Prevent overlapping requests from processing notifications twice.
