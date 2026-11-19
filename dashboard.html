@@ -39,10 +39,11 @@
 
             <div class="account-actions">
                 <button type="button" class="btn" id="logout-btn">
+                    <i class="bx bx-arrow-back"></i>
                     Logout
                 </button>
                 <button type="button" class="btn settings-btn" id="account-settings-btn">
-                    <span>Account</span>
+                    <span>Settings</span>
                 </button>
             </div>
 
@@ -388,6 +389,10 @@
                         const title = document.createElement("h3");
                         title.textContent = service.name;
 
+                        const description = document.createElement("div");
+                        description.className = "service-description";
+                        description.textContent = service.description || "No description available.";
+
                         const wait = document.createElement("p");
                         const people = document.createElement("p");
 
@@ -398,7 +403,7 @@
                             joinQueue(service.id, service.name);
                         });
 
-                        card.append(title, wait, people, joinButton);
+                        card.append(title, description, wait, people, joinButton);
                         servicesGrid.appendChild(card);
                     }
                 }
