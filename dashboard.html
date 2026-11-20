@@ -191,17 +191,22 @@
     </div>
 
     <script>
+        // ============================================
+        // DECLARATIONS
+        // ============================================
+
+        // Used to view each page
         const dashboardView = document.getElementById("dashboard-view");
         const servicesView = document.getElementById("services-view");
         const accountSettingsView = document.getElementById("account-settings-view");
 
+        // Buttons used to go to different pages
         const showServicesBtn = document.getElementById("show-services");
         const showDashboardBtn = document.getElementById("show-dashboard");
         const accountSettingsBtn = document.getElementById("account-settings-btn");
         const profileBackBtn = document.getElementById("profile-back-btn");
 
-        let queueTimer = null;
-        let notificationTimer = null;
+        // Global variables used in functions
         let currentQueueName = "";
         let inQueue = false;
         let queueRefreshTimer = null;
@@ -214,59 +219,31 @@
         const muteSoundCheckbox = document.getElementById("mute-sound-checkbox");
         let notificationQueue = [];
         let isShowingNotification = false;
-
-        // Toggle to Services View
-        showServicesBtn.addEventListener("click", async function(event) {
-            event.preventDefault();
-            dashboardView.style.display = "none";
-            servicesView.style.display = "block";
-            await refreshServicesPage();
-        });
-
-        // Toggle back to Dashboard
-        showDashboardBtn.addEventListener("click", function(event) {
-            event.preventDefault();
-            servicesView.style.display = "none";
-            dashboardView.style.display = "block";
-        });
-
-        // Toggle to Account Settings View
-        accountSettingsBtn.addEventListener("click", async function(event) {
-            event.preventDefault();
-
-            dashboardView.style.display = "none";
-            servicesView.style.display = "none";
-            accountSettingsView.style.display = "block";
-
-            await loadProfile();
-        });
-
-        // Toggle back to Dashboard from Account Settings
-        profileBackBtn.addEventListener("click", function(event) {
-            event.preventDefault();
-
-            accountSettingsView.style.display = "none";
-            dashboardView.style.display = "block";
-        });
-
         let currentServiceId = null;
         let currentUserName = sessionStorage.getItem("userEmail") || "Student User";
-        let previousQueuePosition = null;
-        let isRefreshingQueue = false;
-        
-        // Retrieve token from either storage location
+
+        // ============================================
+        // AUTHENTICATION HELPERS
+        // ============================================
+
+        // Retrieves the user's authentication token
         function getAuthToken() {
             return localStorage.getItem("token") ||
                 sessionStorage.getItem("token");
         }
 
-        // Remove token from both storage locations
+        // Deletes the user's authentication token
         function clearAuthToken() {
             localStorage.removeItem("token");
             sessionStorage.removeItem("token");
         }
 
-        async function restoreExistingQueue() {
+        // ============================================
+        // SERVICE DATA AND SERVICE VIEW
+        // ============================================
+
+        // Restores the user's existing queue information if they were already in a queue
+        async function restoreQueue() {
             const token = getAuthToken();
 
             if (!token) return;
@@ -280,7 +257,6 @@
 
                 const services = await servicesResponse.json();
 
-                // Check each service for an existing queue entry
                 for (const service of services) {
                     const response = await fetch(`/queue/${service.id}`, {
                         headers: {
@@ -298,7 +274,6 @@
                             currentUserName.trim().toLowerCase()
                     );
 
-                    // Restore the queue if the current user is found
                     if (position !== -1) {
                         currentServiceId = String(service.id);
                         currentQueueName = service.name;
@@ -309,20 +284,17 @@
                             Number(service.expectedDuration) || 0;
                         const estimatedWait = currentPosition * duration;
 
-                        previousQueuePosition = currentPosition;
-
                         document.querySelector(".status-info").innerHTML =
                             "<p>Position in queue: <strong>" +
                             currentPosition +
                             "</strong></p>" +
                             "<p>ETA time: <strong>" +
                             estimatedWait +
-                            " mins</strong></p>";
+                            " min</strong></p>";
 
                         document.getElementById("leave-queue-btn").disabled =
                             false;
 
-                        // The user is already in a queue, so stop searching
                         return;
                     }
                 }
@@ -332,7 +304,8 @@
             }
         }
 
-        async function updateServicesCount() {
+        // Displays the avaliable number of services on the dashboard
+        async function updateServicesAmount() {
             try {
                 const response = await fetch("/services");
 
@@ -354,7 +327,8 @@
             }
         }
 
-        async function refreshServicesPage() {
+        // Refreshes the services with the latest information
+        async function refreshServices() {
             try {
                 const response = await fetch("/services");
 
@@ -368,7 +342,6 @@
                 document.getElementById("services-count").textContent =
                     services.filter(service => service.status === "Open").length;
 
-                // Check whether the displayed services need to be rebuilt.
                 const currentIds = Array.from(
                     servicesGrid.querySelectorAll(".service-item")
                 ).map(card => card.dataset.serviceId).join(",");
@@ -377,7 +350,6 @@
                     service => String(service.id)
                 ).join(",");
 
-                // Only recreate cards when the service list actually changes.
                 if (currentIds !== newIds) {
                     servicesGrid.innerHTML = "";
 
@@ -408,7 +380,6 @@
                     }
                 }
 
-                // Update existing cards without rebuilding them.
                 for (const service of services) {
                     const queueResponse = await fetch(`/queue/${service.id}`);
 
@@ -432,10 +403,10 @@
                     const paragraphs = card.querySelectorAll("p");
 
                     paragraphs[0].textContent =
-                        `Average wait time: ${count * duration}m`;
+                        `Average Wait Time: ${count * duration} min`;
 
                     paragraphs[1].textContent =
-                        `Current People in Q: ${count}`;
+                        `Current People Waiting: ${count}`;
 
                     const joinButton = card.querySelector(".join-btn");
 
@@ -450,6 +421,11 @@
             }
         }
 
+        // ============================================
+        // QUEUE MANAGEMENT
+        // ============================================
+
+        // Removes a user from a queue when they leave
         async function leaveQueue() {
             if (!inQueue) return;
 
@@ -475,13 +451,7 @@
                     return;
                 }
 
-                if (queueTimer) {
-                    clearTimeout(queueTimer);
-                    queueTimer = null;
-                }
-
                 inQueue = false;
-                previousQueuePosition = null;
 
                 document.getElementById("leave-queue-btn").disabled = true;
 
@@ -499,7 +469,8 @@
                 showNotification("Error", "Unable to leave queue. Please try again.");
             }
         }
-
+        
+        // Adds a user to a queue when they join
         async function joinQueue(serviceId, serviceName) {
             if (inQueue) {
                 showNotification("Queue Error", "You are already in a queue");
@@ -534,7 +505,6 @@
                 const position = data.position;
                 const remainingMinutes = data.estimatedWaitTime;
 
-                previousQueuePosition = position;
                 currentQueueName = serviceName;
                 currentServiceId = String(serviceId);
                 inQueue = true;
@@ -545,13 +515,9 @@
 
                 document.querySelector(".status-info").innerHTML =
                     "<p>Position in queue: <strong>" + position + "</strong></p>" +
-                    "<p>ETA time: <strong>" + remainingMinutes + " mins</strong></p>";
+                    "<p>ETA time: <strong>" + remainingMinutes + " min</strong></p>";
 
                 await loadNotifications();
-
-                if (queueTimer) {
-                    clearTimeout(queueTimer);
-                }
 
             } catch (err) {
                 console.error("Error joining queue:", err);
@@ -561,16 +527,14 @@
                 );
             }
         }
-        
-        async function refreshQueueStatus() {
-            if (!inQueue || !currentServiceId) return;
 
-            isRefreshingQueue = true;
+        // Refreshes the user's queue information
+        async function refreshQueue() {
+            if (!inQueue || !currentServiceId) return;
 
             const token = getAuthToken();
 
             try {
-                // Fetch the latest, sorted queue from the backend
                 const response = await fetch(
                     `/queue/${currentServiceId}`,
                     {
@@ -581,8 +545,6 @@
                 );
 
                 if (!response.ok) {
-
-                    // A 404 means the service or its queue was deleted.
                     if (response.status === 404) {
 
                         const endedServiceName = currentQueueName;
@@ -599,7 +561,6 @@
                                 const notificationData =
                                     await notificationResponse.json();
 
-                                // Find the removal notification for this service.
                                 const removalNotification =
                                     notificationData.notifications.find(notification =>
                                         notification.type === "admin_removed" &&
@@ -610,7 +571,6 @@
                                 if (removalNotification) {
 
                                     inQueue = false;
-                                    previousQueuePosition = null;
                                     currentServiceId = null;
                                     currentQueueName = "";
 
@@ -619,7 +579,6 @@
                                     document.querySelector(".status-info").innerHTML =
                                         "<p>You have been removed</p>";
 
-                                    // Show the popup and add the update.
                                     await loadNotifications();
 
                                     return;
@@ -639,27 +598,23 @@
 
                 const data = await response.json();
 
-                // Find the current user in the updated queue
                 const position = data.queue.findIndex(
                     entry =>
                         (entry.email || "").trim().toLowerCase() ===
                         currentUserName.trim().toLowerCase()
                 );
 
-                // The user may have been served or removed by an admin
                 if (position === -1) {
                     const endedServiceName = currentQueueName;
                     const endedServiceId = String(currentServiceId);
                     const token = getAuthToken();
 
                     inQueue = false;
-                    previousQueuePosition = null;
                     currentServiceId = null;
                     currentQueueName = "";
 
                     document.getElementById("leave-queue-btn").disabled = true;
 
-                    // Find the reason in backend notification data
                     let eventType = null;
 
                     try {
@@ -689,7 +644,6 @@
                         console.error("Could not determine queue end reason:", error);
                     }
 
-                    // Update the interface only. Notifications come from the backend.
                     if (eventType === "admin_removed") {
                         document.querySelector(".status-info").innerHTML =
                             "<p>You have been removed</p>";
@@ -701,14 +655,11 @@
                             "<p>Your queue session has ended.</p>";
                     }
 
-                    // Display backend notifications and populate Updates.
-                    // Do not call showNotification() or addUpdate() here.
                     await loadNotifications();
 
                     return;
                 }
 
-                // Get the service's expected duration
                 const servicesResponse = await fetch("/services");
 
                 if (!servicesResponse.ok) {
@@ -725,37 +676,35 @@
                 const duration = Number(service?.expectedDuration) || 0;
                 const estimatedWait = currentPosition * duration;
 
-                // Track the current position.
-                // Position notifications are created by the backend.
-                previousQueuePosition = currentPosition;    
-
-                // Update the displayed position and estimated wait
                 document.querySelector(".status-info").innerHTML =
                     "<p>Position in queue: <strong>" +
                     currentPosition +
                     "</strong></p>" +
                     "<p>ETA time: <strong>" +
                     estimatedWait +
-                    " mins</strong></p>";
+                    " min</strong></p>";
 
             } catch (error) {
                 console.error("Queue refresh failed:", error);
-            } finally {
-                isRefreshingQueue = false;
-            }
+            } 
         }
-        
-        // Add notifications to the popup queue
+
+        // ============================================
+        // NOTIFICATIONS
+        // ============================================
+
+        // Adds a notification to the queue and displays the next one
         function showNotification(title, message) {
             notificationQueue.push({ title, message });
             displayNextNotification();
         }
 
-        // Display the next notification in the queue
+        // Displays all queued notifications one at a time
         function displayNextNotification() {
             if (isShowingNotification || notificationQueue.length === 0) {
-                return
+                return;
             }
+
             isShowingNotification = true;
 
             const notification = notificationQueue.shift();
@@ -768,7 +717,6 @@
 
             popup.classList.add("show");
 
-            // Play sound when the notification appears
             if (!muteSoundCheckbox.checked) {
                 notifySound.currentTime = 0;
 
@@ -777,25 +725,19 @@
                 });
             }
 
-            // Keep the notification visible for 4 seconds
             setTimeout(function() {
                 popup.classList.remove("show");
 
-                // Wait for the swoosh animation to finish
                 setTimeout(function() {
                     isShowingNotification = false;
-
-                    // Display the next notification
                     displayNextNotification();
-
                 }, 300);
 
             }, 4000);
-            
         }
-        
+
+        // Loads and displays notifications, alerting the user to new ones
         async function loadNotifications() {
-            // Prevent overlapping requests from processing notifications twice.
             if (isLoadingNotifications) return;
 
             const token = getAuthToken();
@@ -820,10 +762,8 @@
                 const notificationList =
                     document.getElementById("notification-list");
 
-                // Remember which notifications were already displayed.
                 const previousIds = new Set(knownNotificationIds);
 
-                // Rebuild the list using the database's newest-first order.
                 notificationList.innerHTML = "";
 
                 data.notifications.forEach(notification => {
@@ -835,7 +775,6 @@
 
                     notificationList.append(update);
 
-                    // Only show popups for genuinely new notifications.
                     if (
                         notificationsInitialized &&
                         !previousIds.has(notification.id)
@@ -857,7 +796,12 @@
                 isLoadingNotifications = false;
             }
         }
-        
+
+        // ============================================
+        // HISTORY AND PROFILE
+        // ============================================
+
+        // Loads and displays the user's queue history
         async function loadHistory() {
             const token = getAuthToken();
             const tableBody = document.getElementById("history-table-body");
@@ -900,11 +844,12 @@
                             day: "numeric",
                             hour: "numeric",
                             minute: "2-digit"
-                    });
+                        });
 
                     row.insertCell().textContent = record.serviceName;
                     row.insertCell().textContent = record.outcome;
                 });
+
             } catch (error) {
                 console.error("Error loading history:", error);
 
@@ -913,7 +858,7 @@
             }
         }
 
-        // Load the user's profile information
+        // Loads the user's profile information into the profile form
         async function loadProfile() {
             const token = getAuthToken();
 
@@ -953,7 +898,11 @@
             }
         }
 
-        // Save the user's profile changes
+        // ============================================
+        // PROFILE FORM EVENT
+        // ============================================
+
+        // Handles profile form submission and saves the user's updated information
         document.getElementById("profile-form").addEventListener("submit", async function(event) {
             event.preventDefault();
 
@@ -995,8 +944,12 @@
             }
         });
 
+        // ============================================
+        // DASHBOARD REFRESH TIMERS
+        // ============================================
+
+        // Starts automatic refreshing of dashboard information and services
         function startDashboardRefresh() {
-            // Prevent duplicate refresh intervals
             if (queueRefreshTimer) {
                 clearInterval(queueRefreshTimer);
             }
@@ -1005,40 +958,40 @@
                 clearInterval(notificationRefreshTimer);
             }
 
-            // Refresh the queue every second
             queueRefreshTimer = setInterval(() => {
-                refreshQueueStatus();
+                refreshQueue();
             }, 1000);
 
-            // Refresh notifications every second
             notificationRefreshTimer = setInterval(() => {
                 loadNotifications();
             }, 1000);
 
-            // Refresh the number of open services every second
             if (servicesCountRefreshTimer) {
                 clearInterval(servicesCountRefreshTimer);
             }
 
-            updateServicesCount();
+            updateServicesAmount();
 
             servicesCountRefreshTimer = setInterval(() => {
-                updateServicesCount();
+                updateServicesAmount();
             }, 1000);
 
-            // Refresh history every second
             setInterval(() => {
                 loadHistory();
             }, 1000);
 
-            // Refresh service cards every second
             setInterval(() => {
                 if (servicesView.style.display !== "none") {
-                    refreshServicesPage();
+                    refreshServices();
                 }
             }, 1000);
         }
 
+        // ============================================
+        // CLEAR NOTIFICATIONS
+        // ============================================
+
+        // Clears the user's notifications from the server and dashboard
         async function clearUpdates() {
             const token = getAuthToken();
 
@@ -1050,7 +1003,7 @@
             try {
                 const response = await fetch("/notifications", {
                     method: "DELETE",
-                    headers:{
+                    headers: {
                         Authorization: `Bearer ${token}`
                     }
                 });
@@ -1063,7 +1016,7 @@
                         data.error || "Unable to clear notifications."
                     );
                     return;
-                }   
+                }
 
                 document.getElementById("notification-list").innerHTML = "";
                 knownNotificationIds.clear();
@@ -1074,95 +1027,124 @@
             }
         }
 
-    // Check whether the user is logged in
-    async function checkUserAccess() {
+        // ============================================
+        // PAGE NAVIGATION EVENTS
+        // ============================================
 
-        // Retrieve the authentication token saved during login
-        const token = getAuthToken();
+        // Handles navigation to the services page
+        showServicesBtn.addEventListener("click", async function(event) {
+            event.preventDefault();
+            dashboardView.style.display = "none";
+            servicesView.style.display = "block";
+            await refreshServices();
+        });
 
-        // Redirect to login if no token exists
-        if (!token) {
-            window.location.replace("/Login.html");
-            return;
-        }
+        // Handles navigation back to the dashboard
+        showDashboardBtn.addEventListener("click", function(event) {
+            event.preventDefault();
+            servicesView.style.display = "none";
+            dashboardView.style.display = "block";
+        });
 
-        try {
-            // Ask the backend to verify the user's token
-            const response = await fetch("/api/me", {
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
+        // Handles navigation to account settings and loads the user's profile
+        accountSettingsBtn.addEventListener("click", async function(event) {
+            event.preventDefault();
+            dashboardView.style.display = "none";
+            servicesView.style.display = "none";
+            accountSettingsView.style.display = "block";
+            await loadProfile();
+        });
 
-            // Redirect if the token is invalid or expired
-            if (!response.ok) {
-                clearAuthToken();
+        // Handles navigation back to the dashboard from account settings
+        profileBackBtn.addEventListener("click", function(event) {
+            event.preventDefault();
+            accountSettingsView.style.display = "none";
+            dashboardView.style.display = "block";
+        });
+
+        // ============================================
+        // AUTHENTICATION CHECK AND PAGE INITIALIZATION
+        // ============================================
+
+        // Verifies user authentication and redirects users based on their account role
+        async function checkUserAccess() {
+            const token = getAuthToken();
+
+            if (!token) {
                 window.location.replace("/Login.html");
                 return;
             }
 
-            // Retrieve the authenticated user's information
-            const data = await response.json();
-            currentUserName = data.user.email;
-
-            // Redirect administrators to their own dashboard
-            if (data.user.role === "admin") {
-                window.location.replace("/administrator.html");
-                return;
-            }
-
-            // Reject accounts without the regular user role
-            if (data.user.role !== "user") {
-                window.location.replace("/Login.html");
-                return;
-            }
-
-        } catch (error) {
-            // Handle errors when verifying authentication
-            console.error("Authentication error:", error);
-            window.location.replace("/Login.html");
-        }
-    }
-
-    // Verify the user's authentication when the page loads
-    checkUserAccess().then(async () => {
-        if (
-            getAuthToken() &&
-            currentUserName !== "Student User"
-        ) {
-            // Load the service count immediately after login
             try {
-                const response = await fetch("/services");
+                const response = await fetch("/api/me", {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
 
-                if (response.ok) {
-                    const services = await response.json();
-
-                    document.getElementById("services-count").textContent =
-                        services.filter(service => service.status === "Open").length;
+                if (!response.ok) {
+                    clearAuthToken();
+                    window.location.replace("/Login.html");
+                    return;
                 }
+
+                const data = await response.json();
+                currentUserName = data.user.email;
+
+                if (data.user.role === "admin") {
+                    window.location.replace("/administrator.html");
+                    return;
+                }
+
+                if (data.user.role !== "user") {
+                    window.location.replace("/Login.html");
+                    return;
+                }
+
             } catch (error) {
-                console.error("Unable to load service count:", error);
+                console.error("Authentication error:", error);
+                window.location.replace("/Login.html");
             }
-
-            // Restore queue state before starting dashboard refreshes
-            await restoreExistingQueue();
-
-            loadNotifications();
-            loadHistory();
-            startDashboardRefresh();
         }
-    });
 
-    // Log out the user when the Logout button is clicked
-    document.getElementById("logout-btn").addEventListener("click", function() {
+        // Initializes the dashboard by loading user information and starting automatic updates
+        checkUserAccess().then(async () => {
+            if (
+                getAuthToken() &&
+                currentUserName !== "Student User"
+            ) {
+                try {
+                    const response = await fetch("/services");
 
-        // Remove the authentication token stored during login
-        clearAuthToken();
+                    if (response.ok) {
+                        const services = await response.json();
 
-        // Redirect the user back to the login page
-        window.location.replace("/Login.html");
-    });
+                        document.getElementById("services-count").textContent =
+                            services.filter(service => service.status === "Open").length;
+                    }
 
+                } catch (error) {
+                    console.error("Unable to load service count:", error);
+                }
+
+                await restoreQueue();
+
+                loadNotifications();
+                loadHistory();
+                startDashboardRefresh();
+            }
+        });
+
+        // ============================================
+        // LOGOUT EVENT
+        // ============================================
+        
+        // Logs the user out and redirects them to the login page
+        document.getElementById("logout-btn").addEventListener("click", function() {
+            clearAuthToken();
+            window.location.replace("/Login.html");
+        });
+    
     </script>
 </body>
 </html>
